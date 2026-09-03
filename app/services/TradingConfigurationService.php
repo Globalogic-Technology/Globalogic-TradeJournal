@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace App\Services;
+
 /**
  * Phase 3 configuration resolver.
  *
@@ -11,7 +13,7 @@ declare(strict_types=1);
  */
 final class TradingConfigurationService
 {
-    public function resolveRisk(PDO $db, int $userId, ?int $accountId = null, ?int $systemId = null): ?array
+    public function resolveRisk(\PDO $db, int $userId, ?int $accountId = null, ?int $systemId = null): ?array
     {
         if ($accountId !== null) {
             $stmt = $db->prepare(
@@ -52,7 +54,7 @@ final class TradingConfigurationService
         return null;
     }
 
-    public function resolveAssetFee(PDO $db, int $userId, int $assetId, string $feeType = 'commission'): ?array
+    public function resolveAssetFee(\PDO $db, int $userId, int $assetId, string $feeType = 'commission'): ?array
     {
         $stmt = $db->prepare(
             'SELECT f.* FROM asset_fees f

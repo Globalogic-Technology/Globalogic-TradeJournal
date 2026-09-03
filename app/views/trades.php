@@ -22,6 +22,6 @@
 </div>
 <style>
 .trade-history th,.trade-history td{vertical-align:middle}
-.trade-history th:nth-child(9),.trade-history td:nth-child(9){min-width:95px;text-align:right}
+.trade-history th:nth-child(9),.trade-history td:nth-child(9){min-width:100px;text-align:right}
 .trade-history .quantity{font-variant-numeric:tabular-nums}
 </style>

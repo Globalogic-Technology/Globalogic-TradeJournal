@@ -40,7 +40,7 @@ The CSV source `profit_usd` is retained in notes for traceability. The journal s
 
 ## Phase 3 — Trading configuration and risk engine
 
-Phase 3 is complete on the `phase-3` branch. It adds persistent, user-owned configuration and makes that configuration drive trade-level risk calculations.
+Phase 3 adds persistent user-owned configuration and makes it drive trade-level risk calculations.
 
 ### Configuration pages
 - `/systems` — trading system CRUD with ideal risk and risk tolerance.
@@ -52,7 +52,7 @@ Phase 3 is complete on the `phase-3` branch. It adds persistent, user-owned conf
 - `/account-settings` — account default system and account risk configuration.
 
 ### Risk engine
-`App\\Services\\TradeRiskService` is the dedicated calculation service and does not duplicate the existing P&L formula.
+`App\\Services\\TradeRiskService` is the dedicated calculation service.
 
 For a trade with a stop loss:
 - Actual Risk = `abs(Entry - Stop Loss) × Quantity × Contract Size × Point Value`
@@ -65,38 +65,51 @@ For a trade with a stop loss:
 
 ## Phase 4 — Advanced trade journal
 
-Phase 4 adds the qualitative journal layer without duplicating the existing trade fields.
+Phase 4 adds the qualitative journal layer without duplicating existing trade fields.
 
 ### Trade review
-Each trade can now have a dedicated journal review containing:
-- Setup / pattern
-- Market context
-- Pre-trade thesis
-- Entry reason
-- Exit reason
-- Emotion before and after the trade
-- Confidence score (1–5)
-- Execution quality score (1–5)
-- Discipline score (1–5)
-- Mistakes
-- What went well
-- Lessons learned
-- What to change next time
-- Review timestamp
+Each trade can have a dedicated journal review containing setup/pattern, market context, thesis, entry/exit reason, emotions, confidence, execution quality, discipline, mistakes, lessons, what went well and what to change.
 
 ### Tags
-Trades can be tagged with reusable, user-owned labels such as `breakout`, `FOMO`, `A+ setup`, or `news`.
+Trades can be tagged with reusable user-owned labels.
 
 ### Data model
 - `trade_journals` stores one journal review per trade.
 - `journal_tags` stores user-owned tags.
-- `trade_journal_tags` provides the many-to-many relationship between reviews and tags.
+- `trade_journal_tags` provides the many-to-many relationship.
 
-### Trade workflow
-The Trades page now exposes a **Review** action. The review is protected by the same authenticated session and CSRF protection as the rest of the application. A journal record is created on first save and updated thereafter.
+## Phase 5 — Performance and risk analytics
 
-For PHP's built-in development server, the review is also available as `/trades?journal=TRADE_ID`, avoiding dependence on Apache rewrite rules.
+Phase 5 turns the existing trade and risk data into a dedicated analytics dashboard.
+
+### Dashboard metrics
+- Closed trades, wins, losses and breakevens
+- Win rate
+- Net P&L, gross profit and gross loss
+- Profit factor
+- Average win/loss and expectancy per trade
+- Maximum drawdown
+- Trade-level Sharpe using realized Expected R values
+- Total and average fees
+- Cumulative equity curve
+
+### Breakdown analysis
+Performance can be filtered by date range, trading system and trading session, then compared by:
+- Trading system
+- Strategy
+- Trading session
+- Day of week
+
+Each breakdown includes trade count, win rate, net P&L, average R, average risk deviation and fees.
+
+### Risk analysis
+The dashboard summarizes average ideal risk, average actual risk, average risk deviation, over-risk trades and average R multiple.
+
+### Fee impact
+Gross P&L, total fees, net P&L and average fee per trade are shown together so trading costs can be evaluated separately from execution performance.
+
+The Phase 5 analytics service reuses `TradeRiskService` for risk metrics and the application's existing P&L formula for realized results.
 
 ## Database migrations
 
-Run migrations in order. Phase 4 requires Phase 3 because journal records reference existing trades and users.
+Run migrations in order. Phase 4 requires Phase 3 because journal records reference existing trades. Phase 5 does not add a new database table; analytics are derived from existing trade, account, configuration and journal data.

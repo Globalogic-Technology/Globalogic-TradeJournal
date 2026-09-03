@@ -25,8 +25,9 @@ Includes:
 3. Run the Phase 2 migrations if starting from an existing Phase 1 database.
 4. Run `database/migrations/003_phase3_configuration.sql`.
 5. Run `database/migrations/004_phase4_advanced_journal.sql`.
-6. Run `php -S localhost:8000 -t public`.
-7. Open http://localhost:8000.
+6. Run `database/migrations/005_phase6_import_pipeline.sql`.
+7. Run `php -S localhost:8000 -t public`.
+8. Open http://localhost:8000.
 
 Composer is optional because the current application has no required third-party runtime dependencies.
 
@@ -34,82 +35,42 @@ P&L uses price difference × quantity minus fees. Broker-specific contract sizes
 
 ## Phase 2
 
-Added Exness-style CSV import (5 MB limit, validation and duplicate-ticket skipping), JSON backup export, and closed-trade analytics for win rate, net P&L, profit factor, maximum drawdown and trade-level Sharpe.
-
-The CSV source `profit_usd` is retained in notes for traceability. The journal still calculates P&L from entry/exit, quantity and fees.
+Added Exness-style CSV import, JSON backup export and closed-trade analytics.
 
 ## Phase 3 — Trading configuration and risk engine
 
 Phase 3 adds persistent user-owned configuration and makes it drive trade-level risk calculations.
 
-### Configuration pages
-- `/systems` — trading system CRUD with ideal risk and risk tolerance.
-- `/strategies` — strategy CRUD linked to a trading system.
-- `/assets` — asset configuration and broker/contract metadata.
-- `/asset-fees` — optional fee configuration per asset.
-- `/sessions` — trading sessions with start/end time and IANA time zone.
-- `/risk-settings` — account- or system-scoped risk overrides.
-- `/account-settings` — account default system and account risk configuration.
-
-### Risk engine
-`App\\Services\\TradeRiskService` is the dedicated calculation service.
-
-For a trade with a stop loss:
-- Actual Risk = `abs(Entry - Stop Loss) × Quantity × Contract Size × Point Value`
-- Risk % = `Actual Risk / Balance Before × 100`
-- Position Size = `Ideal Risk / Risk Per Unit`
-- Expected R = `Net P&L / Ideal Risk`
-- R Multiple = `Net P&L / Actual Risk`
-- Risk Deviation = `((Actual Risk - Ideal Risk) / Ideal Risk) × 100`
-- Balance After = `Balance Before + Net P&L`
-
 ## Phase 4 — Advanced trade journal
 
-Phase 4 adds the qualitative journal layer without duplicating existing trade fields.
-
-### Trade review
-Each trade can have a dedicated journal review containing setup/pattern, market context, thesis, entry/exit reason, emotions, confidence, execution quality, discipline, mistakes, lessons, what went well and what to change.
-
-### Tags
-Trades can be tagged with reusable user-owned labels.
-
-### Data model
-- `trade_journals` stores one journal review per trade.
-- `journal_tags` stores user-owned tags.
-- `trade_journal_tags` provides the many-to-many relationship.
+Phase 4 adds qualitative trade reviews and reusable journal tags.
 
 ## Phase 5 — Performance and risk analytics
 
-Phase 5 turns the existing trade and risk data into a dedicated analytics dashboard.
+Phase 5 adds a dedicated analytics dashboard with performance, equity, risk, breakdown and fee-impact analysis. Analytics reuse `TradeRiskService` and existing P&L calculations.
 
-### Dashboard metrics
-- Closed trades, wins, losses and breakevens
-- Win rate
-- Net P&L, gross profit and gross loss
-- Profit factor
-- Average win/loss and expectancy per trade
-- Maximum drawdown
-- Trade-level Sharpe using realized Expected R values
-- Total and average fees
-- Cumulative equity curve
+## Phase 6 — Import pipeline and data management
 
-### Breakdown analysis
-Performance can be filtered by date range, trading system and trading session, then compared by:
-- Trading system
-- Strategy
-- Trading session
-- Day of week
+Phase 6 makes CSV ingestion safer and more operationally useful.
 
-Each breakdown includes trade count, win rate, net P&L, average R, average risk deviation and fees.
+### CSV workflow
+- Preview a CSV before importing it.
+- Validate required columns and row values.
+- Inspect up to 1,000 rows during preview without writing trades.
+- Import valid rows with duplicate-ticket protection.
+- Keep broker `profit_usd` and close reason in trade notes for traceability.
+- Record every completed import in `trade_imports`.
+- Show total, imported, skipped and error counts.
 
-### Risk analysis
-The dashboard summarizes average ideal risk, average actual risk, average risk deviation, over-risk trades and average R multiple.
+### Import history
+`/imports` provides the last 100 import records with filename, account, status and row counts.
 
-### Fee impact
-Gross P&L, total fees, net P&L and average fee per trade are shown together so trading costs can be evaluated separately from execution performance.
+### Data management
+`/data-management` provides deliberately destructive operations for deleting all of a user's trades or import history. Both operations require CSRF protection and typing `DELETE` as confirmation.
 
-The Phase 5 analytics service reuses `TradeRiskService` for risk metrics and the application's existing P&L formula for realized results.
+### Migration
+Phase 6 adds `database/migrations/005_phase6_import_pipeline.sql` and does not alter existing trade rows automatically.
 
 ## Database migrations
 
-Run migrations in order. Phase 4 requires Phase 3 because journal records reference existing trades. Phase 5 does not add a new database table; analytics are derived from existing trade, account, configuration and journal data.
+Run migrations in order. Phase 6 requires the earlier schema/configuration/journal migrations because import history references users and accounts.

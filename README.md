@@ -20,9 +20,16 @@ Includes:
 Setup:
 1. Copy `.env.example` to `.env`.
 2. Import `database/schema.sql`.
-3. Run `php -S localhost:8001 -t public`.
-4. Open http://localhost:8001.
+3. Run `php -S localhost:8000 -t public`.
+4. Open http://localhost:8000.
 
 Composer is optional in Phase 1 because there are no third-party runtime dependencies.
 P&L currently uses price difference × quantity minus fees. Broker-specific contract sizes,
 pip values, swaps and FX conversion are intentionally deferred to the next phase.
+
+
+## Phase 2
+
+Added Exness-style CSV import (5 MB limit, validation and duplicate-ticket skipping), JSON backup export, and closed-trade analytics for win rate, net P&L, profit factor, maximum drawdown and trade-level Sharpe.
+
+The CSV source `profit_usd` is retained in notes for traceability. The journal still calculates P&L from entry/exit, quantity and fees. Broker-specific contract sizes, swaps, pip values and currency conversion remain a later calculation-engine phase.

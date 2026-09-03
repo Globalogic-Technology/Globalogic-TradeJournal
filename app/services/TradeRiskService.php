@@ -11,13 +11,7 @@ final class TradeRiskService
     public function calculate(PDO $db, int $userId, array $trade, float $balanceBefore): array
     {
         $configService = new TradingConfigurationService();
-        $risk = $configService->resolveRisk(
-            $db,
-            $userId,
-            isset($trade['account_id']) ? (int)$trade['account_id'] : null,
-            !empty($trade['trading_system_id']) ? (int)$trade['trading_system_id'] : null
-        );
-
+        $risk = $configService->resolveRisk($db, $userId, isset($trade['account_id']) ? (int)$trade['account_id'] : null, !empty($trade['trading_system_id']) ? (int)$trade['trading_system_id'] : null);
         $idealRisk = $risk ? (float)$risk['ideal_risk'] : 0.0;
         $riskTolerance = $risk ? (float)$risk['risk_tolerance'] : 0.0;
         $entry = (float)$trade['entry_price'];
@@ -25,7 +19,16 @@ final class TradeRiskService
         $quantity = (float)$trade['quantity'];
         $pnl = trade_pnl($trade);
 
-        $riskPerUnit = $stop !== null ? abs($entry - $stop) : null;
+        $assetConfig = [];
+        if (!empty($trade['asset_configuration'])) {
+            $decoded = json_decode((string)$trade['asset_configuration'], true);
+            if (is_array($decoded)) $assetConfig = $decoded;
+        }
+        $contractSize = isset($assetConfig['contract_size']) && is_numeric($assetConfig['contract_size']) ? (float)$assetConfig['contract_size'] : 1.0;
+        $pointValue = isset($assetConfig['point_value']) && is_numeric($assetConfig['point_value']) ? (float)$assetConfig['point_value'] : 1.0;
+        $multiplier = max(0.0, $contractSize * $pointValue);
+
+        $riskPerUnit = $stop !== null ? abs($entry - $stop) * $multiplier : null;
         $actualRisk = $riskPerUnit !== null ? $riskPerUnit * $quantity : null;
         $riskPercent = ($actualRisk !== null && $balanceBefore > 0) ? ($actualRisk / $balanceBefore) * 100 : null;
         $positionSize = ($idealRisk > 0 && $riskPerUnit !== null && $riskPerUnit > 0) ? $idealRisk / $riskPerUnit : null;

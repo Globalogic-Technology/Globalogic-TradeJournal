@@ -1,19 +1,10 @@
-<?php $title = 'Analytics'; ?>
-
-<h1>Analytics</h1>
-<p>Performance across your closed trades.</p>
-
-<div class="stats-grid">
-    <div class="card"><span>Closed trades</span><strong><?= (int)$count ?></strong></div>
-    <div class="card"><span>Win rate</span><strong><?= $winRate === null ? '—' : number_format($winRate, 2) . '%' ?></strong></div>
-    <div class="card"><span>Net P&amp;L</span><strong><?= number_format($netPnl, 2) ?></strong></div>
-    <div class="card"><span>Profit factor</span><strong><?= $profitFactor === null ? '—' : number_format($profitFactor, 2) ?></strong></div>
-    <div class="card"><span>Max drawdown</span><strong><?= number_format($maxDrawdown, 2) ?></strong></div>
-    <div class="card"><span>Trade Sharpe</span><strong><?= $sharpe === null ? '—' : number_format($sharpe, 3) ?></strong></div>
-</div>
-
-<div class="card">
-    <p>Wins: <?= (int)$wins ?> · Losses: <?= (int)$losses ?></p>
-    <p>Gross profit: <?= number_format($grossProfit, 2) ?> · Gross loss: <?= number_format($grossLoss, 2) ?></p>
-    <p>Sharpe is trade-level and uses sample standard deviation; it is not annualized.</p>
-</div>
+<?php $title='Analytics'; $s=$analytics['summary']; ?>
+<h1>Performance Analytics</h1>
+<p>Analyze closed-trade performance, risk execution, systems, sessions and fee impact.</p>
+<form method="get" class="card"><div class="grid"><p><label>Trading system</label><select name="system_id"><option value="">All</option><?php foreach($systems as $x):?><option value="<?=e($x['id'])?>" <?=((int)($filters['system_id']??0)===(int)$x['id'])?'selected':''?>><?=e($x['name'])?></option><?php endforeach;?></select></p><p><label>Session</label><select name="session_id"><option value="">All</option><?php foreach($sessions as $x):?><option value="<?=e($x['id'])?>" <?=((int)($filters['session_id']??0)===(int)$x['id'])?'selected':''?>><?=e($x['name'])?></option><?php endforeach;?></select></p><p><label>From</label><input type="date" name="date_from" value="<?=e($filters['date_from']??'')?>"></p><p><label>To</label><input type="date" name="date_to" value="<?=e($filters['date_to']??'')?>"></p></div><button>Apply</button> <a href="/analytics">Reset</a></form>
+<div class="stats-grid"><div class="card"><span>Closed trades</span><strong><?=number_format($s['count'])?></strong></div><div class="card"><span>Win rate</span><strong><?= $s['win_rate']===null?'—':number_format($s['win_rate'],2).'%' ?></strong></div><div class="card"><span>Net P&amp;L</span><strong><?=number_format($s['net_pnl'],2)?></strong></div><div class="card"><span>Profit factor</span><strong><?= $s['profit_factor']===null?'—':number_format($s['profit_factor'],2)?></strong></div><div class="card"><span>Expectancy / trade</span><strong><?= $s['expectancy']===null?'—':number_format($s['expectancy'],2)?></strong></div><div class="card"><span>Max drawdown</span><strong><?=number_format($s['max_drawdown'],2)?></strong></div><div class="card"><span>Trade Sharpe</span><strong><?= $s['sharpe']===null?'—':number_format($s['sharpe'],3)?></strong></div><div class="card"><span>Total fees</span><strong><?=number_format($s['fees'],2)?></strong></div></div>
+<div class="card"><h2>Equity curve</h2><canvas id="equity-chart" height="100"></canvas></div>
+<div class="card"><h2>Risk execution</h2><div class="stats-grid"><div><span>Avg ideal risk</span><strong><?= $analytics['risk']['avg_ideal_risk']===null?'—':number_format($analytics['risk']['avg_ideal_risk'],2)?></strong></div><div><span>Avg actual risk</span><strong><?= $analytics['risk']['avg_actual_risk']===null?'—':number_format($analytics['risk']['avg_actual_risk'],2)?></strong></div><div><span>Avg risk deviation</span><strong><?= $analytics['risk']['avg_risk_deviation']===null?'—':number_format($analytics['risk']['avg_risk_deviation'],2).'%'?></strong></div><div><span>Over-risk trades</span><strong><?=number_format($analytics['risk']['over_risk_trades'])?></strong></div><div><span>Avg R multiple</span><strong><?= $analytics['risk']['avg_r_multiple']===null?'—':number_format($analytics['risk']['avg_r_multiple'],2).'R'?></strong></div></div></div>
+<?php foreach([['Performance by trading system',$analytics['by_system']],['Performance by strategy',$analytics['by_strategy']],['Performance by session',$analytics['by_session']],['Performance by day of week',$analytics['by_weekday']]] as [$heading,$groups]):?><div class="card"><h2><?=e($heading)?></h2><div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Trades</th><th>Win rate</th><th>Net P&amp;L</th><th>Avg R</th><th>Avg Risk Dev.</th><th>Fees</th></tr></thead><tbody><?php foreach($groups as $g):?><tr><td><?=e($g['name'])?></td><td><?=number_format($g['trades'])?></td><td><?= $g['win_rate']===null?'—':number_format($g['win_rate'],1).'%'?></td><td><?=number_format($g['net_pnl'],2)?></td><td><?= $g['avg_r']===null?'—':number_format($g['avg_r'],2).'R'?></td><td><?= $g['avg_risk_dev']===null?'—':number_format($g['avg_risk_dev'],1).'%'?></td><td><?=number_format($g['fees'],2)?></td></tr><?php endforeach;?></tbody></table></div></div><?php endforeach;?>
+<div class="card"><h2>Fee impact</h2><p>Gross P&amp;L: <strong><?=number_format($analytics['fee_impact']['gross_pnl'],2)?></strong> · Fees: <strong><?=number_format($analytics['fee_impact']['fees'],2)?></strong> · Net P&amp;L: <strong><?=number_format($analytics['fee_impact']['net_pnl'],2)?></strong> · Average fee/trade: <strong><?= $analytics['fee_impact']['avg_fee_per_trade']===null?'—':number_format($analytics['fee_impact']['avg_fee_per_trade'],2)?></strong></p></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script><script>new Chart(document.getElementById('equity-chart'),{type:'line',data:{labels:<?=json_encode(array_column($analytics['equity_curve'],'date'))?>,datasets:[{label:'Cumulative P&L',data:<?=json_encode(array_column($analytics['equity_curve'],'equity'))?>,tension:.2}]},options:{responsive:true}});</script>

@@ -14,7 +14,7 @@
 <?php foreach($trades as $t):$r=$t['risk'];?><tr>
 <td><?=e($t['ticket']??'')?></td><td><?=e($t['symbol'])?></td><td><?=e($t['side'])?></td><td><?=e($t['status'])?></td><td><?=e($t['system_name']??'—')?></td><td><?=e($t['strategy_name']??'—')?></td><td><?=e($t['session_name']??'—')?></td><td><?=e($t['opened_at'])?></td><td><?=e($t['quantity'])?></td><td><?=e($t['entry_price'])?></td><td><?=e($t['exit_price']??'')?></td><td class="<?=($t['pnl']===null?'':($t['pnl']>=0?'positive':'negative'))?>"><?=$t['pnl']===null?'—':number_format($t['pnl'],2)?></td>
 <td><?=number_format($r['ideal_risk'],2)?></td><td><?=$r['actual_risk']===null?'—':number_format($r['actual_risk'],2)?></td><td><?=$r['expected_r']===null?'—':number_format($r['expected_r'],2).'R'?></td><td><?=$r['r_multiple']===null?'—':number_format($r['r_multiple'],2).'R'?></td><td><?=$r['risk_deviation']===null?'—':number_format($r['risk_deviation'],2).'%';?></td><td><?=number_format($r['balance_after'],2)?></td>
-<td><a href="/trades/<?=e($t['id'])?>/journal">Review</a></td>
+<td><a href="/trades?journal=<?=e($t['id'])?>">Review</a></td>
 <td><a href="?edit=<?=e($t['id'])?>">Edit</a> <form method="post" style="display:inline" onsubmit="return confirm('Delete trade?')"><input type="hidden" name="_csrf" value="<?=e(csrf_token())?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?=e($t['id'])?>"><button class="danger">Delete</button></form></td>
 </tr><?php endforeach;?>
 <?php if(!$trades):?><tr><td colspan="20" class="muted">No trades found.</td></tr><?php endif;?></table></div>

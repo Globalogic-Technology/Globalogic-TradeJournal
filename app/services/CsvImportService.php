@@ -12,6 +12,7 @@ use RuntimeException;
 final class CsvImportService
 {
     public const REQUIRED = ['symbol','type','opening_time_utc','closing_time_utc','lots','opening_price','closing_price','profit_usd','commission_usd','close_reason','ticket'];
+    private const CSV_ESCAPE = '';
 
     public function preview(string $path): array
     {
@@ -37,9 +38,9 @@ final class CsvImportService
     private function read(string $path, ?int $limit=null): array
     {
         $fh=fopen($path,'rb');if(!$fh)throw new RuntimeException('Unable to read CSV file.');
-        $headers=fgetcsv($fh);if(!$headers){fclose($fh);throw new RuntimeException('CSV file is empty.');}
+        $headers=fgetcsv($fh, 0, ',', '"', self::CSV_ESCAPE);if(!$headers){fclose($fh);throw new RuntimeException('CSV file is empty.');}
         $headers=array_map(static fn($v)=>strtolower(trim((string)$v)), $headers);$rows=[];$n=0;
-        while(($values=fgetcsv($fh))!==false){if($limit!==null&&$n>=$limit)break;if(count($values)===1&&trim((string)$values[0])==='')continue;$rows[]=array_combine($headers,array_pad($values,count($headers),''));$n++;}
+        while(($values=fgetcsv($fh, 0, ',', '"', self::CSV_ESCAPE))!==false){if($limit!==null&&$n>=$limit)break;if(count($values)===1&&trim((string)$values[0])==='')continue;$rows[]=array_combine($headers,array_pad($values,count($headers),''));$n++;}
         fclose($fh);return [$headers,$rows];
     }
 

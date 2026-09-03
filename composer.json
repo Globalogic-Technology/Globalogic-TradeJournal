@@ -1,0 +1,7 @@
+{
+  "name": "trading-journal/php-mysql",
+  "description": "Trading Journal PHP + MySQL",
+  "type": "project",
+  "require": {"php": "^8.2"},
+  "autoload": {"psr-4": {"App\\": "app/"}}
+}

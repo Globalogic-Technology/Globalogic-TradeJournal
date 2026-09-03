@@ -48,7 +48,29 @@ function phase3_trade_route(string $path,string $method,array $user):bool
     if($symbol!==''){$where[]='t.symbol LIKE ?';$params[]='%'.$symbol.'%';}if(in_array($side,['long','short'],true)){$where[]='t.side=?';$params[]=$side;}if(in_array($status,['open','closed'],true)){$where[]='t.status=?';$params[]=$status;}if($systemFilter){$where[]='t.trading_system_id=?';$params[]=$systemFilter;}if($assetFilter){$where[]='t.asset_id=?';$params[]=$assetFilter;}
     $s=$db->prepare('SELECT COUNT(*) FROM trades t WHERE '.implode(' AND ',$where));$s->execute($params);$total=(int)$s->fetchColumn();$page=max(1,(int)($_GET['page']??1));$pages=max(1,(int)ceil($total/25));$page=min($page,$pages);$offset=($page-1)*25;
     $s=$db->prepare('SELECT t.*,a.name account_name,a.currency,a.initial_balance,ts.name system_name,st.name strategy_name,ar.symbol asset_symbol,ar.configuration asset_configuration,sess.name session_name FROM trades t JOIN accounts a ON a.id=t.account_id AND a.user_id=t.user_id LEFT JOIN trading_systems ts ON ts.id=t.trading_system_id AND ts.user_id=t.user_id LEFT JOIN strategies st ON st.id=t.strategy_id AND st.user_id=t.user_id LEFT JOIN assets ar ON ar.id=t.asset_id AND ar.user_id=t.user_id LEFT JOIN trading_sessions sess ON sess.id=t.trading_session_id AND sess.user_id=t.user_id WHERE '.implode(' AND ',$where).' ORDER BY t.opened_at DESC,t.id DESC LIMIT 25 OFFSET '.$offset);$s->execute($params);$trades=$s->fetchAll();
-    $riskService=new \App\Services\TradeRiskService();foreach($trades as &$t){$t['pnl']=trade_pnl($t);$balanceBefore=(float)$t['initial_balance'];$cutoff=$t['closed_at']??$t['opened_at'];$prior=$db->prepare('SELECT * FROM trades WHERE user_id=? AND account_id=? AND status="closed" AND closed_at IS NOT NULL AND (closed_at < ? OR (closed_at = ? AND id < ?)) ORDER BY closed_at,id');$prior->execute([$userId,$t['account_id'],$cutoff,$cutoff,$t['id']]);foreach($prior->fetchAll() as $p)$balanceBefore+=(float)(trade_pnl($p)??0);$t['risk']=$riskService->calculate($db,$userId,$t,$balanceBefore);}unset($t);
+    $riskService=new \App\Services\TradeRiskService();
+    foreach($trades as &$t){
+        // Backfill the system from the account default for legacy/imported trades.
+        if(empty($t['trading_system_id'])){
+            $defaultSystemId=$db->prepare('SELECT default_system_id FROM accounts WHERE id=? AND user_id=? LIMIT 1');
+            $defaultSystemId->execute([(int)$t['account_id'],$userId]);
+            $resolvedSystemId=$defaultSystemId->fetchColumn();
+            if($resolvedSystemId!==false && $resolvedSystemId!==null){
+                $t['trading_system_id']=(int)$resolvedSystemId;
+                $sys=$db->prepare('SELECT name FROM trading_systems WHERE id=? AND user_id=? LIMIT 1');
+                $sys->execute([(int)$resolvedSystemId,$userId]);
+                $t['system_name']=$sys->fetchColumn() ?: $t['system_name'];
+            }
+        }
+        $t['pnl']=trade_pnl($t);
+        $balanceBefore=(float)$t['initial_balance'];
+        $cutoff=$t['closed_at']??$t['opened_at'];
+        $prior=$db->prepare('SELECT * FROM trades WHERE user_id=? AND account_id=? AND status="closed" AND closed_at IS NOT NULL AND (closed_at < ? OR (closed_at = ? AND id < ?)) ORDER BY closed_at,id');
+        $prior->execute([$userId,$t['account_id'],$cutoff,$cutoff,$t['id']]);
+        foreach($prior->fetchAll() as $p)$balanceBefore+=(float)(trade_pnl($p)??0);
+        $t['risk']=$riskService->calculate($db,$userId,$t,$balanceBefore);
+    }
+    unset($t);
     $editRisk=null;if($editTrade){$editRisk=$riskService->calculate($db,$userId,$editTrade,(float)$editTrade['initial_balance']);}
     render('trades',['title'=>'Trades','accounts'=>$accounts,'systems'=>$systems,'strategies'=>$strategies,'assets'=>$assets,'sessions'=>$sessions,'editTrade'=>$editTrade,'newTradeDefaults'=>$newTradeDefaults,'editRisk'=>$editRisk,'trades'=>$trades,'filters'=>['symbol'=>$symbol,'side'=>$side,'status'=>$status,'trading_system_id'=>$systemFilter,'asset_id'=>$assetFilter],'page'=>$page,'pages'=>$pages,'total'=>$total]);return true;
 }

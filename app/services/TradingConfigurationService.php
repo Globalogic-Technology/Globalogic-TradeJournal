@@ -11,11 +11,22 @@ final class TradingConfigurationService
 {
     public function resolveRisk(\PDO $db, int $userId, ?int $accountId = null, ?int $systemId = null): ?array
     {
+        // If a trade has no explicit system, inherit the account's default system.
+        if ($systemId === null && $accountId !== null) {
+            $stmt = $db->prepare('SELECT default_system_id FROM accounts WHERE id=? AND user_id=? LIMIT 1');
+            $stmt->execute([$accountId, $userId]);
+            $defaultSystemId = $stmt->fetchColumn();
+            if ($defaultSystemId !== false && $defaultSystemId !== null) {
+                $systemId = (int)$defaultSystemId;
+            }
+        }
+
+        // Most specific: account + trading system.
         if ($accountId !== null && $systemId !== null) {
             $stmt = $db->prepare(
                 'SELECT ideal_risk, risk_tolerance, account_id, trading_system_id
                  FROM risk_settings
-                 WHERE user_id=? AND account_id=? AND trading_system_id=?
+                 WHERE user_id=? AND account_id=? AND trading_system_id=? AND ideal_risk > 0
                  ORDER BY id DESC LIMIT 1'
             );
             $stmt->execute([$userId, $accountId, $systemId]);
@@ -23,21 +34,23 @@ final class TradingConfigurationService
             if ($row) return $row;
         }
 
+        // Then use the trading-system risk setting.
         if ($systemId !== null) {
             $stmt = $db->prepare(
                 'SELECT ideal_risk, risk_tolerance, account_id, trading_system_id
                  FROM risk_settings
-                 WHERE user_id=? AND trading_system_id=? AND account_id IS NULL
+                 WHERE user_id=? AND trading_system_id=? AND account_id IS NULL AND ideal_risk > 0
                  ORDER BY id DESC LIMIT 1'
             );
             $stmt->execute([$userId, $systemId]);
             $row = $stmt->fetch();
             if ($row) return $row;
 
+            // Trading systems themselves contain the default ideal risk.
             $stmt = $db->prepare(
                 'SELECT ideal_risk, risk_tolerance, id AS trading_system_id
                  FROM trading_systems
-                 WHERE id=? AND user_id=?
+                 WHERE id=? AND user_id=? AND ideal_risk > 0
                  LIMIT 1'
             );
             $stmt->execute([$systemId, $userId]);
@@ -45,11 +58,12 @@ final class TradingConfigurationService
             if ($row) return $row;
         }
 
+        // Finally use an account-specific setting, then the account defaults.
         if ($accountId !== null) {
             $stmt = $db->prepare(
                 'SELECT ideal_risk, risk_tolerance, account_id, trading_system_id
                  FROM risk_settings
-                 WHERE user_id=? AND account_id=? AND trading_system_id IS NULL
+                 WHERE user_id=? AND account_id=? AND trading_system_id IS NULL AND ideal_risk > 0
                  ORDER BY id DESC LIMIT 1'
             );
             $stmt->execute([$userId, $accountId]);
@@ -59,7 +73,7 @@ final class TradingConfigurationService
             $stmt = $db->prepare(
                 'SELECT ideal_risk, risk_tolerance, id AS account_id, default_system_id AS trading_system_id
                  FROM accounts
-                 WHERE id=? AND user_id=?
+                 WHERE id=? AND user_id=? AND ideal_risk > 0
                  LIMIT 1'
             );
             $stmt->execute([$accountId, $userId]);

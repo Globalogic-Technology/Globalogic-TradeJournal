@@ -1,0 +1,48 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Services\FeatureParityService;
+
+function phase9_route(string $path,string $method,array $user):bool
+{
+    if($path==='/bulk-trades'){phase9_bulk($method,$user);return true;}
+    if($path==='/balance-adjustments'){phase9_balance($method,$user);return true;}
+    if($path==='/json-import'){phase9_json_import($method,$user);return true;}
+    return false;
+}
+
+function phase9_bulk(string $method,array $user):void
+{
+    $db=db();$uid=(int)$user['id'];
+    if($method==='POST'){
+        verify_csrf();$ids=array_values(array_filter(array_map('intval',(array)($_POST['trade_ids']??[])),fn($v)=>$v>0));if(!$ids)throw new InvalidArgumentException('Select at least one trade.');
+        $field=(string)($_POST['field']??'');$value=trim((string)($_POST['value']??''));$allowed=['trading_system_id','strategy_id','trading_session_id','grade','timeframe'];if(!in_array($field,$allowed,true))throw new InvalidArgumentException('Invalid bulk-update field.');
+        if(in_array($field,['grade','timeframe'],true)){if($field==='grade'&&$value!==''&&!in_array($value,FeatureParityService::GRADES,true))throw new InvalidArgumentException('Invalid grade.');if($field==='timeframe'&&$value!==''&&!in_array($value,['1m','5m','15m','30m','1h','4h','1d','1w'],true))throw new InvalidArgumentException('Invalid timeframe.');$value=$value===''?null:$value;}else{$value=$value===''?null:(int)$value;if($value!==null){$table=['trading_system_id'=>'trading_systems','strategy_id'=>'strategies','trading_session_id'=>'trading_sessions'][$field];$q=$db->prepare("SELECT id FROM {$table} WHERE id=? AND user_id=?");$q->execute([$value,$uid]);if(!$q->fetchColumn())throw new InvalidArgumentException('Selected configuration is invalid.');}}
+        $ph=implode(',',array_fill(0,count($ids),'?'));$sql="UPDATE trades SET {$field}=? WHERE user_id=? AND id IN ({$ph})";$stmt=$db->prepare($sql);$stmt->execute(array_merge([$value,$uid],$ids));flash('success',$stmt->rowCount().' trade(s) updated.');redirect('/trades');
+    }
+    $s=$db->prepare('SELECT id,symbol,side,status,grade,timeframe,opened_at FROM trades WHERE user_id=? ORDER BY opened_at DESC LIMIT 500');$s->execute([$uid]);$trades=$s->fetchAll();
+    $s=$db->prepare('SELECT id,name FROM trading_systems WHERE user_id=? ORDER BY name');$s->execute([$uid]);$systems=$s->fetchAll();$s=$db->prepare('SELECT id,name FROM strategies WHERE user_id=? ORDER BY name');$s->execute([$uid]);$strategies=$s->fetchAll();$s=$db->prepare('SELECT id,name FROM trading_sessions WHERE user_id=? ORDER BY name');$s->execute([$uid]);$sessions=$s->fetchAll();
+    render('bulk_trades',['title'=>'Bulk Trade Update','trades'=>$trades,'systems'=>$systems,'strategies'=>$strategies,'sessions'=>$sessions,'grades'=>FeatureParityService::GRADES,'timeframes'=>['1m','5m','15m','30m','1h','4h','1d','1w']]);
+}
+
+function phase9_balance(string $method,array $user):void
+{
+    $db=db();$uid=(int)$user['id'];
+    if($method==='POST'){
+        verify_csrf();$account=(int)($_POST['account_id']??0);$amount=(float)($_POST['amount']??0);$reason=trim((string)($_POST['reason']??''));$when=trim((string)($_POST['adjusted_at']??''));$q=$db->prepare('SELECT id FROM accounts WHERE id=? AND user_id=?');$q->execute([$account,$uid]);if(!$q->fetchColumn())throw new InvalidArgumentException('Invalid account.');if($amount==0)throw new InvalidArgumentException('Adjustment amount cannot be zero.');if($reason==='')throw new InvalidArgumentException('A reason is required.');$dt=datetime_input($when,'Adjustment date/time');$db->prepare('INSERT INTO balance_adjustments(user_id,account_id,amount,reason,adjusted_at) VALUES(?,?,?,?,?)')->execute([$uid,$account,$amount,$reason,$dt]);flash('success','Balance adjustment recorded.');redirect('/balance-adjustments');
+    }
+    $s=$db->prepare('SELECT id,name,currency,initial_balance FROM accounts WHERE user_id=? ORDER BY name');$s->execute([$uid]);$accounts=$s->fetchAll();$s=$db->prepare('SELECT b.*,a.name account_name,a.currency FROM balance_adjustments b JOIN accounts a ON a.id=b.account_id AND a.user_id=b.user_id WHERE b.user_id=? ORDER BY b.adjusted_at DESC LIMIT 100');$s->execute([$uid]);render('balance_adjustments',['title'=>'Balance Adjustments','accounts'=>$accounts,'adjustments'=>$s->fetchAll()]);
+}
+
+function phase9_json_import(string $method,array $user):void
+{
+    $db=db();$uid=(int)$user['id'];$preview=null;
+    $accountsStmt=$db->prepare('SELECT id,name,currency FROM accounts WHERE user_id=? ORDER BY name');$accountsStmt->execute([$uid]);$accounts=$accountsStmt->fetchAll();
+    if($method==='POST'){
+        verify_csrf();$account=(int)($_POST['account_id']??0);$q=$db->prepare('SELECT id FROM accounts WHERE id=? AND user_id=?');$q->execute([$account,$uid]);if(!$q->fetchColumn())throw new InvalidArgumentException('Invalid account.');$file=$_FILES['json_file']??null;if(!$file||($file['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK)throw new InvalidArgumentException('Choose a JSON file.');if(($file['size']??0)>10*1024*1024)throw new InvalidArgumentException('JSON file is too large. Maximum size is 10 MB.');$raw=file_get_contents($file['tmp_name']);$data=json_decode((string)$raw,true);if(!is_array($data))throw new InvalidArgumentException('Invalid JSON backup.');$items=$data['trades']??$data;if(!is_array($items))throw new InvalidArgumentException('JSON backup does not contain a trades array.');
+        $valid=0;$duplicates=0;$errors=[];foreach($items as $i=>$t){if(!is_array($t)||empty($t['symbol'])||empty($t['side'])||empty($t['opened_at'])||!isset($t['quantity'],$t['entry_price'])){$errors[]='Row '.($i+1).': missing required trade fields.';continue;}if(!in_array($t['side'],['long','short'],true)){$errors[]='Row '.($i+1).': invalid side.';continue;}$ticket=trim((string)($t['ticket']??''));if($ticket!==''){$d=$db->prepare('SELECT id FROM trades WHERE account_id=? AND ticket=?');$d->execute([$account,$ticket]);if($d->fetchColumn()){$duplicates++;continue;}}$valid++;}
+        if(($_POST['action']??'preview')==='preview'){$preview=['total'=>count($items),'valid'=>$valid,'duplicates'=>$duplicates,'errors'=>$errors];}else{$imported=0;foreach($items as $t){if(!is_array($t)||empty($t['symbol'])||empty($t['side'])||empty($t['opened_at'])||!isset($t['quantity'],$t['entry_price'])||!in_array($t['side'],['long','short'],true))continue;$ticket=trim((string)($t['ticket']??''));if($ticket!==''){$d=$db->prepare('SELECT id FROM trades WHERE account_id=? AND ticket=?');$d->execute([$account,$ticket]);if($d->fetchColumn())continue;}$status=in_array(($t['status']??'closed'),['open','closed'],true)?$t['status']:'closed';$closed=$t['closed_at']??$t['closeDate']??null;$exit=$t['exit_price']??$t['exitPrice']??null;$db->prepare('INSERT INTO trades(user_id,account_id,ticket,symbol,side,status,opened_at,closed_at,quantity,entry_price,stop_loss,take_profit,exit_price,fees,notes,trading_system_id,strategy_id,asset_id,trading_session_id,grade,timeframe,screenshot_path) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$uid,$account,$ticket===''?null:$ticket,strtoupper((string)$t['symbol']),$t['side'],$status,$t['opened_at'],$closed,$t['quantity'],$t['entry_price'],$t['stop_loss']??null,$t['take_profit']??null,$exit,$t['fees']??$t['fee']??0,$t['notes']??null,$t['trading_system_id']??null,$t['strategy_id']??null,$t['asset_id']??null,$t['trading_session_id']??null,$t['grade']??null,$t['timeframe']??null,$t['screenshot_path']??null]);$imported++;}flash('success',"Restored {$imported} trade(s); skipped {$duplicates} duplicate(s). ");redirect('/json-import');}
+    }
+    render('json_import',['title'=>'Restore JSON Backup','accounts'=>$accounts,'preview'=>$preview]);
+}

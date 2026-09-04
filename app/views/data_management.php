@@ -1,0 +1,5 @@
+<?php $title='Data Management'; ?>
+<h1>Data Management</h1>
+<p>Manage destructive trade and import-history operations. JSON backup/export remains available from the existing Backup action.</p>
+<div class="card"><h2>Trades</h2><p><?=number_format($tradeCount)?> trade(s) currently stored.</p><form method="post" onsubmit="return confirm('This permanently deletes ALL trades. Continue?');"><?=csrf_field()?><input type="hidden" name="action" value="delete_all_trades"><label>Type DELETE to confirm <input name="confirmation" autocomplete="off" required></label><button type="submit">Delete all trades</button></form></div>
+<div class="card"><h2>Import history</h2><p><?=number_format($importCount)?> import record(s) currently stored.</p><form method="post" onsubmit="return confirm('Delete import history?');"><?=csrf_field()?><input type="hidden" name="action" value="delete_import_history"><label>Type DELETE to confirm <input name="confirmation" autocomplete="off" required></label><button type="submit">Delete import history</button></form></div>

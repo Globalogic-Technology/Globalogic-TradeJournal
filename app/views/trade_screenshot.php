@@ -1,0 +1,1 @@
+<h1>Trade Screenshot</h1><div class="card"><form method="post" enctype="multipart/form-data"><?=csrf_field()?><p><label>Trade ID</label><input type="number" name="trade_id" min="1" required></p><p><label>Screenshot (PNG/JPEG, max 5 MB)</label><input type="file" name="screenshot" accept="image/png,image/jpeg" required></p><button>Upload screenshot</button></form></div>

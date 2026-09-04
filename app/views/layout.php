@@ -12,7 +12,7 @@
 <nav>
 <a class="brand" href="/dashboard"><?= e(env('APP_NAME', 'Trading Journal')) ?></a>
 <?php if(current_user()): ?>
-<div class="nav-group"><a href="/dashboard">Dashboard</a><a href="/accounts">Accounts</a><a href="/trades">Trades</a><a href="/analytics">Analytics</a><a href="/import">Import</a><a href="/export?format=json">Backup</a></div>
+<div class="nav-group"><a href="/dashboard">Dashboard</a><a href="/accounts">Accounts</a><a href="/trades">Trades</a><a href="/analytics">Analytics</a><a href="/import">Import</a><a href="/imports">Import History</a><a href="/data-management">Data</a><a href="/export?format=json">Backup</a></div>
 <div class="nav-group"><span class="nav-section">Configuration</span><a href="/systems">Systems</a><a href="/strategies">Strategies</a><a href="/assets">Assets</a><a href="/asset-fees">Fees</a><a href="/sessions">Sessions</a><a href="/risk-settings">Risk</a><a href="/account-settings">Account Config</a></div>
 <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>"><button class="secondary">Logout</button></form>
 <?php else: ?><a href="/login">Login</a><a href="/register">Register</a><?php endif; ?>

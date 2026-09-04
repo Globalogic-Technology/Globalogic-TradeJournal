@@ -10,13 +10,11 @@ $accounts=$accounts??[];$systems=$systems??[];
 ?>
 <div class="page-title"><?= $esc($title??'Configuration') ?></div>
 <p class="page-subtitle">Configure the values used by your trading journal and risk calculations.</p>
-
 <div class="card form-card">
   <div class="section-heading">
     <div><h2><?= $edit?'Edit':'Configure' ?> <?= $esc(rtrim($title??'Configuration','s')) ?></h2><div class="sub"><?= $isAccount?'Select an account to load its current configuration, then save your changes.':'Keep related settings together so configuration can be updated quickly.' ?></div></div>
     <?php if($edit):?><a class="secondary-link" href="<?= $esc($action) ?>">New</a><?php endif;?>
   </div>
-
   <form method="post" action="<?= $esc($action) ?>" id="configuration-form">
     <?=csrf_field()?>
     <input type="hidden" name="action" value="save">
@@ -59,10 +57,19 @@ $accounts=$accounts??[];$systems=$systems??[];
     <div class="actions"><button><?= $edit?'Save changes':'Save configuration' ?></button><?php if($edit):?><a class="secondary-link" href="<?= $esc($action) ?>">Cancel</a><?php endif;?></div>
   </form>
 </div>
-
 <?php if($isAccount):
   $accountMap=[];
-  foreach($accounts as $a){$accountMap[(string)$a['id']=['id'=>(int)$a['id'],'name'=>(string)$a['name'],'currency'=>(string)($a['currency']??'USD'),'initial_balance'=>(float)($a['initial_balance']??0),'default_system_id'=>$a['default_system_id']??null,'ideal_risk'=>(float)($a['ideal_risk']??0),'risk_tolerance'=>(float)($a['risk_tolerance']??10)];}
+  foreach($accounts as $a){
+    $accountMap[(string)$a['id']]=[
+      'id'=>(int)$a['id'],
+      'name'=>(string)$a['name'],
+      'currency'=>(string)($a['currency']??'USD'),
+      'initial_balance'=>(float)($a['initial_balance']??0),
+      'default_system_id'=>$a['default_system_id']??null,
+      'ideal_risk'=>(float)($a['ideal_risk']??0),
+      'risk_tolerance'=>(float)($a['risk_tolerance']??10)
+    ];
+  }
 ?>
 <script nonce="<?=e(csp_nonce())?>">
 (function(){
@@ -77,7 +84,7 @@ $accounts=$accounts??[];$systems=$systems??[];
     const balance=field('initial_balance'),currency=field('currency'),system=field('default_system_id'),ideal=field('ideal_risk'),tolerance=field('risk_tolerance');
     if(balance)balance.value=account.initial_balance;
     if(currency)currency.value=account.currency;
-    if(system){system.value=account.default_system_id==null?'':String(account.default_system_id);}
+    if(system)system.value=account.default_system_id==null?'':String(account.default_system_id);
     if(ideal)ideal.value=account.ideal_risk;
     if(tolerance)tolerance.value=account.risk_tolerance;
   }
@@ -86,7 +93,6 @@ $accounts=$accounts??[];$systems=$systems??[];
 })();
 </script>
 <?php endif;?>
-
 <div class="card table-wrap">
   <div class="section-heading"><div><h2>Existing configuration</h2><div class="sub"><?= $isAccount?'Select Edit to open an account, or use the account selector above to load it immediately.':'Click Edit to load a record into the form above.' ?></div></div></div>
   <table><thead><tr>

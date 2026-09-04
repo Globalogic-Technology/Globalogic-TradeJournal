@@ -136,7 +136,19 @@ function phase3_render(string $resource, array $user): void
         case 'fees': $s=db()->prepare('SELECT f.*,a.symbol asset_symbol FROM asset_fees f JOIN assets a ON a.id=f.asset_id WHERE f.user_id=? ORDER BY a.symbol,f.fee_type');$s->execute([$uid]);$data['rows']=$s->fetchAll();$q=db()->prepare('SELECT id,symbol,name FROM assets WHERE user_id=? ORDER BY symbol');$q->execute([$uid]);$data['assets']=$q->fetchAll();$data['form']=['action'=>'/asset-fees','fields'=>['asset_id','fee_type','fee_amount','fee_currency']];$data['title']='Asset Fees';break;
         case 'sessions': $s=db()->prepare('SELECT * FROM trading_sessions WHERE user_id=? ORDER BY name');$s->execute([$uid]);$data['rows']=$s->fetchAll();$data['timezones']=DateTimeZone::listIdentifiers();$data['form']=['action'=>'/sessions','fields'=>['name','start_time','end_time','timezone']];$data['title']='Trading Sessions';break;
         case 'risk': $s=db()->prepare('SELECT r.*,a.name account_name,ts.name system_name FROM risk_settings r LEFT JOIN accounts a ON a.id=r.account_id LEFT JOIN trading_systems ts ON ts.id=r.trading_system_id WHERE r.user_id=? ORDER BY r.id DESC');$s->execute([$uid]);$data['rows']=$s->fetchAll();$q=db()->prepare('SELECT id,name FROM accounts WHERE user_id=? ORDER BY name');$q->execute([$uid]);$data['accounts']=$q->fetchAll();$q=db()->prepare('SELECT id,name FROM trading_systems WHERE user_id=? ORDER BY name');$q->execute([$uid]);$data['systems']=$q->fetchAll();$data['form']=['action'=>'/risk-settings','fields'=>['account_id','trading_system_id','ideal_risk','risk_tolerance']];$data['title']='Risk Settings';break;
-        case 'account': $s=db()->prepare('SELECT a.*,ts.name default_system_name FROM accounts a LEFT JOIN trading_systems ts ON ts.id=a.default_system_id WHERE a.user_id=? ORDER BY a.name');$s->execute([$uid]);$data['rows']=$s->fetchAll();$q=db()->prepare('SELECT id,name FROM trading_systems WHERE user_id=? ORDER BY name');$q->execute([$uid]);$data['systems']=$q->fetchAll();$data['form']=['action'=>'/account-settings','fields'=>['account_id','initial_balance','currency','default_system_id','ideal_risk','risk_tolerance']];$data['title']='Account Configuration';break;
+        case 'account':
+            $s=db()->prepare('SELECT a.*,ts.name default_system_name FROM accounts a LEFT JOIN trading_systems ts ON ts.id=a.default_system_id WHERE a.user_id=? ORDER BY a.name');
+            $s->execute([$uid]);
+            $data['rows']=$s->fetchAll();
+            // The Account Configuration view expects $accounts for its account selector.
+            // Use the same user-owned account rows that are displayed in the table.
+            $data['accounts']=$data['rows'];
+            $q=db()->prepare('SELECT id,name FROM trading_systems WHERE user_id=? ORDER BY name');
+            $q->execute([$uid]);
+            $data['systems']=$q->fetchAll();
+            $data['form']=['action'=>'/account-settings','fields'=>['account_id','initial_balance','currency','default_system_id','ideal_risk','risk_tolerance']];
+            $data['title']='Account Configuration';
+            break;
     }
     render('phase3', $data);
 }

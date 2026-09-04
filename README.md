@@ -4,19 +4,7 @@
 
 PHP 8.2+ / MySQL 8+. Based on the feature set of coderkhalide/Trading-Journal, rebuilt as a server-side PHP/MySQL application.
 
-Includes:
-- Registration/login/logout
-- Session authentication and CSRF protection
-- Trading accounts
-- Add/edit/delete trades
-- Long/short and open/closed trades
-- Ticket number and duplicate-ticket protection per account
-- Server-side validation
-- Automatic P&L
-- Dashboard balances and summary
-- Trade filtering and pagination
-- PDO prepared statements
-- Apache rewrite support
+Includes registration/login/logout, session authentication and CSRF protection, trading accounts, trade CRUD, Long/Short, open/closed trades, duplicate-ticket protection, validation, automatic P&L, dashboard balances, filters/pagination, PDO prepared statements and Apache rewrite support.
 
 ## Setup
 
@@ -26,12 +14,9 @@ Includes:
 4. Run `database/migrations/003_phase3_configuration.sql`.
 5. Run `database/migrations/004_phase4_advanced_journal.sql`.
 6. Run `database/migrations/005_phase6_import_pipeline.sql`.
-7. Run `php -S localhost:8000 -t public`.
-8. Open http://localhost:8000.
-
-Composer is optional because the current application has no required third-party runtime dependencies.
-
-P&L uses price difference × quantity minus fees. Broker-specific contract sizes and point values can be supplied through the Phase 3 asset JSON configuration.
+7. Run `database/migrations/006_phase7_audit_and_hardening.sql`.
+8. Run `php -S localhost:8000 -t public`.
+9. Open http://localhost:8000.
 
 ## Phase 2
 
@@ -39,38 +24,41 @@ Added Exness-style CSV import, JSON backup export and closed-trade analytics.
 
 ## Phase 3 — Trading configuration and risk engine
 
-Phase 3 adds persistent user-owned configuration and makes it drive trade-level risk calculations.
+Adds persistent user-owned configuration and trade-level risk calculations.
 
 ## Phase 4 — Advanced trade journal
 
-Phase 4 adds qualitative trade reviews and reusable journal tags.
+Adds qualitative trade reviews and reusable journal tags.
 
 ## Phase 5 — Performance and risk analytics
 
-Phase 5 adds a dedicated analytics dashboard with performance, equity, risk, breakdown and fee-impact analysis. Analytics reuse `TradeRiskService` and existing P&L calculations.
+Adds performance, equity, risk, breakdown and fee-impact analysis while reusing the trade risk service.
 
 ## Phase 6 — Import pipeline and data management
 
-Phase 6 makes CSV ingestion safer and more operationally useful.
+Adds CSV preview/validation, import history, duplicate protection and deliberate destructive data-management operations.
 
-### CSV workflow
-- Preview a CSV before importing it.
-- Validate required columns and row values.
-- Inspect up to 1,000 rows during preview without writing trades.
-- Import valid rows with duplicate-ticket protection.
-- Keep broker `profit_usd` and close reason in trade notes for traceability.
-- Record every completed import in `trade_imports`.
-- Show total, imported, skipped and error counts.
+## Phase 7 — Security, reliability and audit trail
 
-### Import history
-`/imports` provides the last 100 import records with filename, account, status and row counts.
+Phase 7 hardens the web application and adds traceability for sensitive operations.
 
-### Data management
-`/data-management` provides deliberately destructive operations for deleting all of a user's trades or import history. Both operations require CSRF protection and typing `DELETE` as confirmation.
+### Security hardening
+- Strict session mode and cookie-only sessions.
+- HttpOnly and SameSite session cookies.
+- Secure session cookies when HTTPS is detected.
+- Content-Security-Policy with a per-request nonce for the inline analytics chart.
+- `X-Content-Type-Options: nosniff`.
+- `X-Frame-Options: SAMEORIGIN`.
+- Strict referrer policy.
+- Restrictive Permissions Policy.
+- HSTS when served over HTTPS.
+
+### Audit trail
+`/audit-log` shows user-owned security/data events, including CSV previews, CSV imports and destructive data-management actions. The audit service is fail-safe: a logging failure is recorded server-side and does not break the user's primary operation.
 
 ### Migration
-Phase 6 adds `database/migrations/005_phase6_import_pipeline.sql` and does not alter existing trade rows automatically.
+Phase 7 adds `database/migrations/006_phase7_audit_and_hardening.sql`.
 
 ## Database migrations
 
-Run migrations in order. Phase 6 requires the earlier schema/configuration/journal migrations because import history references users and accounts.
+Run migrations in order. Phase 7 requires the earlier schema, configuration, journal and import migrations.

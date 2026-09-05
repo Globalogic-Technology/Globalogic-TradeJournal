@@ -39,12 +39,12 @@ Phase 11 Goals + Performance
    ↓
 Phase 11.1 Account/System Goals + Goal Visualization + Calendar Navigation
    ↓
-Phase 11.2 Best Trading Times + Strategy Performance
+Phase 11.2 Best Trading Times + Strategy Performance + Bulk Trade Filters
 ```
 
-## Phase 11.2 — Best Trading Times and Strategy Performance
+## Phase 11.2 — Best Trading Times, Strategy Performance and Bulk Filters
 
-The Dashboard now provides deeper time-of-day and strategy analytics.
+The Dashboard now provides deeper time-of-day and strategy analytics. The Bulk Trade Update page also mirrors the Trade History filtering workflow.
 
 ### Best Trading Times of the Day
 
@@ -68,6 +68,26 @@ The **Best Trading Days of the Week** table now includes **Most Strategy Used**,
 If a trade has no strategy assigned, it is reported as **Unassigned** rather than being omitted from the analytics.
 
 Times are based on the timezone represented by the stored `opened_at` value/database session; the feature does not silently convert timestamps to another timezone.
+
+### Bulk Trade Update filters
+
+The **Bulk Trade Update** page now provides the same filtering dimensions used by Trade History before selecting trades for a bulk operation:
+
+- Symbol
+- Side
+- Status
+- Trading System
+- Asset
+- Strategy
+- Trading Session
+- Grade
+- Timeframe
+- Outcome
+- From / To dates
+- Minimum / Maximum P&L
+- Minimum / Maximum R Multiple
+
+Filters are applied server-side before the selectable trade list is rendered. Trade ownership remains enforced when the bulk update is submitted, so selected IDs cannot be used to modify another user's trades.
 
 ## Phase 1 — Working foundation
 
@@ -265,7 +285,7 @@ Run migrations in order:
 010_phase11_goals_by_system.sql
 ```
 
-Phase 11.2 does not require a database migration because its time and strategy analytics are derived from existing trade, strategy and trading-system data.
+Phase 11.2 does not require a database migration because its time and strategy analytics and bulk filtering are derived from existing trade, strategy, asset, session and trading-system data.
 
 For existing installations, do not skip migrations.
 
@@ -299,7 +319,7 @@ php -S localhost:8000 -t public
 | 10 | UI | Compact trading-journal dashboard and responsive workflow |
 | 11 | Goals / Performance | Daily/weekly/monthly/yearly targets, calendar P&L and yearly performance |
 | 11.1 | Account/System Goals | Independent goals, editing/deletion, goal-hit visualization, calendar navigation and weekday ranking |
-| 11.2 | Time / Strategy Analytics | Best trading times, most-used strategy by weekday/time and Strategy Performance chart |
+| 11.2 | Time / Strategy / Bulk Analytics | Best trading times, most-used strategy by weekday/time, Strategy Performance chart and Trade History filters for bulk updates |
 
 ## Reference project
 

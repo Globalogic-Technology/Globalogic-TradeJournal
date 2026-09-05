@@ -1,15 +1,57 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__,2).'/app/bootstrap.php';
+require dirname(__DIR__,2).'/app/phase11.php';
 $user=require_auth();
 $stmt=db()->prepare('SELECT t.*,a.name account_name,a.currency,a.initial_balance,a.ideal_risk FROM trades t JOIN accounts a ON a.id=t.account_id AND a.user_id=t.user_id WHERE t.user_id=? ORDER BY t.opened_at ASC,t.id ASC');
-$stmt->execute([$user['id']]); $trades=$stmt->fetchAll();
-$closed=[]; foreach($trades as $t){$p=trade_pnl($t); if($p!==null){$t['pnl']=$p;$t['r']=$t['ideal_risk']>0?$p/(float)$t['ideal_risk']:null;$closed[]=$t;}}
-$pnls=array_column($closed,'pnl'); $count=count($pnls); $wins=count(array_filter($pnls,fn($p)=>$p>0)); $losses=count(array_filter($pnls,fn($p)=>$p<0)); $grossWin=array_sum(array_filter($pnls,fn($p)=>$p>0)); $grossLoss=abs(array_sum(array_filter($pnls,fn($p)=>$p<0))); $net=array_sum($pnls);
-$pf=$grossLoss>0?$grossWin/$grossLoss:null; $wr=$count?100*$wins/$count:null; $exp=$count?$net/$count:null; $largestWin=$pnls?max($pnls):null; $largestLoss=$pnls?min($pnls):null;
+$stmt->execute([$user['id']]);
+$trades=$stmt->fetchAll();
+$closed=[];
+foreach($trades as $t){
+    $p=trade_pnl($t);
+    if($p!==null){$t['pnl']=$p;$t['r']=$t['ideal_risk']>0?$p/(float)$t['ideal_risk']:null;$closed[]=$t;}
+}
+$pnls=array_column($closed,'pnl');
+$count=count($pnls);
+$wins=count(array_filter($pnls,fn($p)=>$p>0));
+$grossWin=array_sum(array_filter($pnls,fn($p)=>$p>0));
+$grossLoss=abs(array_sum(array_filter($pnls,fn($p)=>$p<0)));
+$net=array_sum($pnls);
+$pf=$grossLoss>0?$grossWin/$grossLoss:null;
+$wr=$count?100*$wins/$count:null;
+$exp=$count?$net/$count:null;
+$largestWin=$pnls?max($pnls):null;
+$largestLoss=$pnls?min($pnls):null;
 $equity=0;$equityLabels=[];$equityData=[];$balance=0;$balanceLabels=[];$balanceData=[];$rValues=[];$systems=[];$months=[];
-foreach($closed as $t){$equity+=$t['pnl'];$equityLabels[]=(string)$t['id'];$equityData[]=round($equity,4);$balance=(float)$t['initial_balance']+$equity;$balanceLabels[]=(string)$t['id'];$balanceData[]=round($balance,4);if($t['r']!==null)$rValues[]=$t['r'];$name=$t['system_name']??$t['symbol'];$systems[$name]=($systems[$name]??0)+$t['pnl'];$month=date('Y-m',strtotime($t['closed_at']??$t['opened_at']));$months[$month]=($months[$month]??0)+$t['pnl'];}
-if($closed){$ids=array_column($closed,'id');$in=implode(',',array_fill(0,count($ids),'?'));$q=db()->prepare("SELECT t.id,ts.name system_name FROM trades t LEFT JOIN trading_systems ts ON ts.id=t.trading_system_id WHERE t.id IN ($in) AND t.user_id=?");$q->execute([...$ids,$user['id']]);foreach($q->fetchAll() as $x){$name=$x['system_name']??'Unassigned';foreach($closed as &$t)if((int)$t['id']===(int)$x['id']){$t['system_name']=$name;break;}unset($t);} $systems=[];foreach($closed as $t)$systems[$t['system_name']??'Unassigned']=($systems[$t['system_name']??'Unassigned']??0)+$t['pnl'];}
-$systemLabels=array_keys($systems);$systemData=array_map(fn($v)=>round($v,2),array_values($systems));$monthLabels=array_keys($months);$monthData=array_map(fn($v)=>round($v,2),array_values($months));
-$rBuckets=['<-2R'=>0,'-2R'=>0,'-1R'=>0,'0R'=>0,'1R'=>0,'2R'=>0,'3R+'=>0];foreach($rValues as $r){$k=$r<-2?'<-2R':($r<-1?'-2R':($r<0?'-1R':($r<1?'0R':($r<2?'1R':($r<3?'2R':'3R+')))));$rBuckets[$k]++;}
-render('dashboard_report',['title'=>'Dashboard','count'=>$count,'wr'=>$wr,'pf'=>$pf,'exp'=>$exp,'largestWin'=>$largestWin,'largestLoss'=>$largestLoss,'net'=>$net,'equityLabels'=>$equityLabels,'equityData'=>$equityData,'balanceLabels'=>$balanceLabels,'balanceData'=>$balanceData,'systemLabels'=>$systemLabels,'systemData'=>$systemData,'monthLabels'=>$monthLabels,'monthData'=>$monthData,'rLabels'=>array_keys($rBuckets),'rData'=>array_values($rBuckets)]);
+foreach($closed as $t){
+    $equity+=$t['pnl'];
+    $equityLabels[]=(string)$t['id'];
+    $equityData[]=round($equity,4);
+    $balance=(float)$t['initial_balance']+$equity;
+    $balanceLabels[]=(string)$t['id'];
+    $balanceData[]=round($balance,4);
+    if($t['r']!==null)$rValues[]=$t['r'];
+    $month=date('Y-m',strtotime($t['closed_at']??$t['opened_at']));
+    $months[$month]=($months[$month]??0)+$t['pnl'];
+}
+$systemLabels=[];$systemData=[];
+if($closed){
+    $ids=array_column($closed,'id');
+    $in=implode(',',array_fill(0,count($ids),'?'));
+    $q=db()->prepare("SELECT t.id,ts.name system_name FROM trades t LEFT JOIN trading_systems ts ON ts.id=t.trading_system_id WHERE t.id IN ($in) AND t.user_id=?");
+    $q->execute([...$ids,$user['id']]);
+    $names=[];
+    foreach($q->fetchAll() as $x){$names[(int)$x['id']]=$x['system_name']??'Unassigned';}
+    foreach($closed as $t){$name=$names[(int)$t['id']]??'Unassigned';$systems[$name]=($systems[$name]??0)+$t['pnl'];}
+    $systemLabels=array_keys($systems);
+    $systemData=array_map(fn($v)=>round($v,2),array_values($systems));
+}
+$monthLabels=array_keys($months);
+$monthData=array_map(fn($v)=>round($v,2),array_values($months));
+$rBuckets=['<-2R'=>0,'-2R'=>0,'-1R'=>0,'0R'=>0,'1R'=>0,'2R'=>0,'3R+'=>0];
+foreach($rValues as $r){
+    $k=$r<-2?'<-2R':($r<-1?'-2R':($r<0?'-1R':($r<1?'0R':($r<2?'1R':($r<3?'2R':'3R+')))));
+    $rBuckets[$k]++;
+}
+$goalPerformance=phase11_performance(db(),(int)$user['id']);
+render('dashboard_report',['title'=>'Dashboard','count'=>$count,'wr'=>$wr,'pf'=>$pf,'exp'=>$exp,'largestWin'=>$largestWin,'largestLoss'=>$largestLoss,'net'=>$net,'equityLabels'=>$equityLabels,'equityData'=>$equityData,'balanceLabels'=>$balanceLabels,'balanceData'=>$balanceData,'systemLabels'=>$systemLabels,'systemData'=>$systemData,'monthLabels'=>$monthLabels,'monthData'=>$monthData,'rLabels'=>array_keys($rBuckets),'rData'=>array_values($rBuckets),'goalPerformance'=>$goalPerformance]);

@@ -40,24 +40,42 @@ $editAccount=$editAccount??null;$editCsvTemplate=$editCsvTemplate??null;
 </div>
 
 <div class="card form-card">
-  <div class="section-heading"><div><h2>Create Trade CSV template</h2><div class="sub">Choose an account and map its broker CSV headers to the journal's standard trade fields.</div></div></div>
-  <?php if(!$accounts): ?>
-    <p class="muted">Create an account first, then configure its Trade CSV Import template.</p>
-  <?php elseif(!$editCsvTemplate): ?>
+  <?php if($editCsvTemplate): $t=$editCsvTemplate; $accountName='';foreach($accounts as $a)if((int)$a['id']===(int)$t['account_id']){$accountName=$a['name'];break;} ?>
+    <div class="section-heading"><div><h2>Edit Trade CSV template</h2><div class="sub">Update the mapping for this template. The template list stays below this section.</div></div></div>
     <form method="post">
-      <?=csrf_field()?><input type="hidden" name="action" value="csv_template_save"><input type="hidden" name="template_id" value="">
+      <?=csrf_field()?><input type="hidden" name="action" value="csv_template_save"><input type="hidden" name="account_id" value="<?=e($t['account_id'])?>"><input type="hidden" name="template_id" value="<?=e($t['id'])?>">
       <div class="grid">
-        <p><label>Account</label><select name="account_id" required><?php foreach($accounts as $a): ?><option value="<?=e($a['id'])?>"><?=e($a['name'])?> (<?=e($a['currency'])?>)</option><?php endforeach; ?></select></p>
-        <p><label>Template name</label><input name="template_name" value="Default CSV" required></p>
-        <p><label>CSV delimiter</label><select name="delimiter_char"><option value=",">Comma (,)</option><option value=";">Semicolon (;)</option><option value="|">Pipe (|)</option><option value="\t">Tab</option></select></p>
-        <p><label>Date/time zone</label><select name="date_timezone"><option>UTC</option><option>America/New_York</option><option>America/Chicago</option><option>America/Los_Angeles</option><option>America/Sao_Paulo</option></select></p>
-        <p><label><input type="checkbox" name="has_header" value="1" checked> CSV has header row</label></p>
-        <p><label><input type="checkbox" name="is_default" value="1" checked> Use as default template</label></p>
+        <p><label>Account</label><input value="<?=e($accountName)?>" disabled></p>
+        <p><label>Template name</label><input name="template_name" value="<?=e($t['name'])?>" required></p>
+        <p><label>CSV delimiter</label><select name="delimiter_char"><option value="," <?=$t['delimiter_char']===','?'selected':''?>>Comma (,)</option><option value=";" <?=$t['delimiter_char']===';'?'selected':''?>>Semicolon (;)</option><option value="|" <?=$t['delimiter_char']==='|'?'selected':''?>>Pipe (|)</option><option value="\t" <?=$t['delimiter_char']==="\t"?'selected':''?>>Tab</option></select></p>
+        <p><label>Date/time zone</label><select name="date_timezone"><?php foreach(['UTC','America/New_York','America/Chicago','America/Los_Angeles','America/Sao_Paulo'] as $tz): ?><option value="<?=e($tz)?>" <?=$t['date_timezone']===$tz?'selected':''?>><?=e($tz)?></option><?php endforeach; ?></select></p>
+        <p><label><input type="checkbox" name="has_header" value="1" <?=$t['has_header']?'checked':''?>> CSV has header row</label></p>
+        <p><label><input type="checkbox" name="is_default" value="1" <?=$t['is_default']?'checked':''?>> Use as default template</label></p>
       </div>
-      <h3>CSV column mapping</h3><p class="sub">The values below are example headers. Replace them with the exact headers from the selected account's CSV export.</p>
-      <div class="grid config-grid"><?php foreach($csvFields as $field=>$label): ?><p><label><?=e($label)?><?=in_array($field,['symbol','type','opening_time','closing_time','quantity','entry_price','exit_price','profit','fees','ticket'],true)?' *':''?></label><input name="mapping[<?=e($field)?>]" value="<?=e($defaultCsv[$field]??'')?>" placeholder="Exact CSV header name"></p><?php endforeach; ?></div>
-      <div class="actions"><button>Save CSV template</button></div>
+      <h3>CSV column mapping</h3><p class="sub">Enter the exact CSV header for each journal field. Required fields are marked with *.</p>
+      <div class="grid config-grid"><?php foreach($csvFields as $field=>$label): ?><p><label><?=e($label)?><?=in_array($field,['symbol','type','opening_time','closing_time','quantity','entry_price','exit_price','profit','fees','ticket'],true)?' *':''?></label><input name="mapping[<?=e($field)?>]" value="<?=e($t['mapping'][$field]??'')?>" placeholder="Exact CSV header name"></p><?php endforeach; ?></div>
+      <div class="actions"><button>Save changes</button><a class="button secondary" href="/accounts">Cancel</a></div>
     </form>
+  <?php else: ?>
+    <div class="section-heading"><div><h2>Create Trade CSV template</h2><div class="sub">Choose an account and map its broker CSV headers to the journal's standard trade fields.</div></div></div>
+    <?php if(!$accounts): ?>
+      <p class="muted">Create an account first, then configure its Trade CSV Import template.</p>
+    <?php else: ?>
+      <form method="post">
+        <?=csrf_field()?><input type="hidden" name="action" value="csv_template_save"><input type="hidden" name="template_id" value="">
+        <div class="grid">
+          <p><label>Account</label><select name="account_id" required><?php foreach($accounts as $a): ?><option value="<?=e($a['id'])?>"><?=e($a['name'])?> (<?=e($a['currency'])?>)</option><?php endforeach; ?></select></p>
+          <p><label>Template name</label><input name="template_name" value="Default CSV" required></p>
+          <p><label>CSV delimiter</label><select name="delimiter_char"><option value=",">Comma (,)</option><option value=";">Semicolon (;)</option><option value="|">Pipe (|)</option><option value="\t">Tab</option></select></p>
+          <p><label>Date/time zone</label><select name="date_timezone"><option>UTC</option><option>America/New_York</option><option>America/Chicago</option><option>America/Los_Angeles</option><option>America/Sao_Paulo</option></select></p>
+          <p><label><input type="checkbox" name="has_header" value="1" checked> CSV has header row</label></p>
+          <p><label><input type="checkbox" name="is_default" value="1" checked> Use as default template</label></p>
+        </div>
+        <h3>CSV column mapping</h3><p class="sub">The values below are example headers. Replace them with the exact headers from the selected account's CSV export.</p>
+        <div class="grid config-grid"><?php foreach($csvFields as $field=>$label): ?><p><label><?=e($label)?><?=in_array($field,['symbol','type','opening_time','closing_time','quantity','entry_price','exit_price','profit','fees','ticket'],true)?' *':''?></label><input name="mapping[<?=e($field)?>]" value="<?=e($defaultCsv[$field]??'')?>" placeholder="Exact CSV header name"></p><?php endforeach; ?></div>
+        <div class="actions"><button>Save CSV template</button></div>
+      </form>
+    <?php endif; ?>
   <?php endif; ?>
 </div>
 
@@ -84,23 +102,3 @@ $editAccount=$editAccount??null;$editCsvTemplate=$editCsvTemplate??null;
     </div>
   <?php endif; ?>
 </div>
-
-<?php if($editCsvTemplate): $t=$editCsvTemplate; ?>
-<div class="card form-card">
-  <div class="section-heading"><div><h2>Edit Trade CSV template</h2><div class="sub">Update the mapping without creating another template.</div></div></div>
-  <form method="post">
-    <?=csrf_field()?><input type="hidden" name="action" value="csv_template_save"><input type="hidden" name="account_id" value="<?=e($t['account_id'])?>"><input type="hidden" name="template_id" value="<?=e($t['id'])?>">
-    <div class="grid">
-      <p><label>Account</label><input value="<?php $accountName='';foreach($accounts as $a)if((int)$a['id']===(int)$t['account_id']){$accountName=$a['name'];break;} echo e($accountName)?>" disabled></p>
-      <p><label>Template name</label><input name="template_name" value="<?=e($t['name'])?>" required></p>
-      <p><label>CSV delimiter</label><select name="delimiter_char"><option value="," <?=$t['delimiter_char']===','?'selected':''?>>Comma (,)</option><option value=";" <?=$t['delimiter_char']===';'?'selected':''?>>Semicolon (;)</option><option value="|" <?=$t['delimiter_char']==='|'?'selected':''?>>Pipe (|)</option><option value="\t" <?=$t['delimiter_char']==="\t"?'selected':''?>>Tab</option></select></p>
-      <p><label>Date/time zone</label><select name="date_timezone"><?php foreach(['UTC','America/New_York','America/Chicago','America/Los_Angeles','America/Sao_Paulo'] as $tz): ?><option value="<?=e($tz)?>" <?=$t['date_timezone']===$tz?'selected':''?>><?=e($tz)?></option><?php endforeach; ?></select></p>
-      <p><label><input type="checkbox" name="has_header" value="1" <?=$t['has_header']?'checked':''?>> CSV has header row</label></p>
-      <p><label><input type="checkbox" name="is_default" value="1" <?=$t['is_default']?'checked':''?>> Use as default template</label></p>
-    </div>
-    <h3>CSV column mapping</h3><p class="sub">Enter the exact CSV header for each journal field. Required fields are marked with *.</p>
-    <div class="grid config-grid"><?php foreach($csvFields as $field=>$label): ?><p><label><?=e($label)?><?=in_array($field,['symbol','type','opening_time','closing_time','quantity','entry_price','exit_price','profit','fees','ticket'],true)?' *':''?></label><input name="mapping[<?=e($field)?>]" value="<?=e($t['mapping'][$field]??'')?>" placeholder="Exact CSV header name"></p><?php endforeach; ?></div>
-    <div class="actions"><button>Save changes</button><a class="button secondary" href="/accounts">Cancel</a></div>
-  </form>
-</div>
-<?php endif; ?>

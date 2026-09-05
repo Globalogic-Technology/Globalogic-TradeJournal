@@ -206,6 +206,7 @@ Dashboard goal references make progress easier to read:
 - The Monthly P&L Calendar legend uses larger, color-coded status symbols: green **✓** for goal hit, blue **↑** for positive below goal, red **✕** for loss, and gray **•** for no P&L.
 - The calendar has **Prev**, **Today** and **Next** controls so historical and future months can be reviewed without leaving the Dashboard.
 - Calendar navigation preserves the selected Account and Trading System filters.
+- Calendar navigation loads only the calendar section through an asynchronous request and preserves the user's current page scroll position.
 
 ### Weekday P&L ranking
 

@@ -19,8 +19,7 @@ function phase11_route(string $path,string $method,array $user): bool
             $q=$db->prepare('SELECT id FROM accounts WHERE id=? AND user_id=?');$q->execute([$accountId,$uid]);
             if(!$q->fetchColumn())throw new InvalidArgumentException('Select a valid account.');
             if($systemId!==null){$q=$db->prepare('SELECT id FROM trading_systems WHERE id=? AND user_id=?');$q->execute([$systemId,$uid]);if(!$q->fetchColumn())throw new InvalidArgumentException('Select a valid trading system.');}
-            $vals=[];
-            foreach(['daily_goal','weekly_goal','monthly_goal','yearly_goal'] as $f){$v=trim((string)($_POST[$f]??''));if($v===''||!is_numeric($v)||!is_finite((float)$v))throw new InvalidArgumentException('All P&L goals must be numeric.');$v=(float)$v;if($v<0)throw new InvalidArgumentException('P&L goals cannot be negative.');$vals[]=$v;}
+            $vals=[];foreach(['daily_goal','weekly_goal','monthly_goal','yearly_goal'] as $f){$v=trim((string)($_POST[$f]??''));if($v===''||!is_numeric($v)||!is_finite((float)$v))throw new InvalidArgumentException('All P&L goals must be numeric.');$v=(float)$v;if($v<0)throw new InvalidArgumentException('P&L goals cannot be negative.');$vals[]=$v;}
             $s=$db->prepare('INSERT INTO pnl_goals(user_id,account_id,trading_system_id,daily_goal,weekly_goal,monthly_goal,yearly_goal) VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE daily_goal=VALUES(daily_goal),weekly_goal=VALUES(weekly_goal),monthly_goal=VALUES(monthly_goal),yearly_goal=VALUES(yearly_goal)');
             $s->execute([$uid,$accountId,$systemId,...$vals]);flash('success','P&L goals saved.');redirect('/goals');
         }
@@ -40,6 +39,19 @@ function phase11_period_pnl(PDO $db,int $uid,string $start,string $end,?int $acc
     $s=$db->prepare('SELECT COALESCE(SUM('.phase11_pnl_expr().'),0) FROM trades t WHERE '.$where);$s->execute($params);return(float)$s->fetchColumn();
 }
 
+function phase11_goal_for_scope(array $goals,?int $accountId=null,?int $systemId=null,string $period='daily'): float
+{
+    $field=$period.'_goal';$total=0.0;
+    foreach($goals as $g){
+        $ga=(int)$g['account_id'];$gs=$g['trading_system_id']===null?null:(int)$g['trading_system_id'];
+        if($accountId!==null && $ga!==$accountId)continue;
+        if($systemId!==null && $gs!==$systemId)continue;
+        if($systemId!==null){$total+=(float)$g[$field];}
+        elseif($gs===null){$total+=(float)$g[$field];}
+    }
+    return $total;
+}
+
 function phase11_performance(PDO $db,int $uid): array
 {
     $now=new DateTimeImmutable('now');$today=$now->setTime(0,0,0);$tomorrow=$today->modify('+1 day');
@@ -50,9 +62,10 @@ function phase11_performance(PDO $db,int $uid): array
     $s=$db->prepare('SELECT id,name FROM trading_systems WHERE user_id=? ORDER BY name');$s->execute([$uid]);$systems=$s->fetchAll();
     $accountPnl=[];foreach($accounts as $a){$id=(int)$a['id'];$accountPnl[$id]=['today'=>phase11_period_pnl($db,$uid,$today->format('Y-m-d H:i:s'),$tomorrow->format('Y-m-d H:i:s'),$id),'week'=>phase11_period_pnl($db,$uid,$weekStart->format('Y-m-d H:i:s'),$nextWeek->format('Y-m-d H:i:s'),$id),'month'=>phase11_period_pnl($db,$uid,$monthStart->format('Y-m-d H:i:s'),$nextMonth->format('Y-m-d H:i:s'),$id),'year'=>phase11_period_pnl($db,$uid,$yearStart->format('Y-m-d H:i:s'),$nextYear->format('Y-m-d H:i:s'),$id)];}
     $systemPnl=[];foreach($systems as $srow){$id=(int)$srow['id'];$systemPnl[$id]=['today'=>phase11_period_pnl($db,$uid,$today->format('Y-m-d H:i:s'),$tomorrow->format('Y-m-d H:i:s'),null,$id),'week'=>phase11_period_pnl($db,$uid,$weekStart->format('Y-m-d H:i:s'),$nextWeek->format('Y-m-d H:i:s'),null,$id),'month'=>phase11_period_pnl($db,$uid,$monthStart->format('Y-m-d H:i:s'),$nextMonth->format('Y-m-d H:i:s'),null,$id),'year'=>phase11_period_pnl($db,$uid,$yearStart->format('Y-m-d H:i:s'),$nextYear->format('Y-m-d H:i:s'),null,$id)];}
-    $calendar=[];$days=(int)$nextMonth->modify('-1 day')->format('d');for($d=1;$d<=$days;$d++){$date=$monthStart->setDate((int)$monthStart->format('Y'),(int)$monthStart->format('m'),$d);$next=$date->modify('+1 day');$calendar[$date->format('Y-m-d')]=phase11_period_pnl($db,$uid,$date->format('Y-m-d H:i:s'),$next->format('Y-m-d H:i:s'));}
-    $year=[];for($m=1;$m<=12;$m++){$start=$yearStart->setDate((int)$yearStart->format('Y'),$m,1);$end=$start->modify('+1 month');$year[$start->format('Y-m')]=phase11_period_pnl($db,$uid,$start->format('Y-m-d H:i:s'),$end->format('Y-m-d H:i:s'));}
     $s=$db->prepare('SELECT g.*,a.name account_name,a.currency,ts.name system_name FROM pnl_goals g JOIN accounts a ON a.id=g.account_id LEFT JOIN trading_systems ts ON ts.id=g.trading_system_id WHERE g.user_id=? ORDER BY a.name,ts.name');$s->execute([$uid]);$goals=$s->fetchAll();
     $goalMap=[];foreach($goals as $g){$goalMap[(int)$g['account_id'].':'.((int)($g['trading_system_id']??0))]=$g;}
-    return compact('accounts','systems','accountPnl','systemPnl','calendar','year','goals','goalMap','today','weekStart','monthStart','yearStart');
+    $calendar=[];$days=(int)$nextMonth->modify('-1 day')->format('d');for($d=1;$d<=$days;$d++){$date=$monthStart->setDate((int)$monthStart->format('Y'),(int)$monthStart->format('m'),$d);$next=$date->modify('+1 day');$calendar[$date->format('Y-m-d')]=phase11_period_pnl($db,$uid,$date->format('Y-m-d H:i:s'),$next->format('Y-m-d H:i:s'));}
+    $year=[];for($m=1;$m<=12;$m++){$start=$yearStart->setDate((int)$yearStart->format('Y'),$m,1);$end=$start->modify('+1 month');$year[$start->format('Y-m')]=phase11_period_pnl($db,$uid,$start->format('Y-m-d H:i:s'),$end->format('Y-m-d H:i:s'));}
+    $dailyGoal=phase11_goal_for_scope($goals,null,null,'daily');$weeklyGoal=phase11_goal_for_scope($goals,null,null,'weekly');$monthlyGoal=phase11_goal_for_scope($goals,null,null,'monthly');$yearlyGoal=phase11_goal_for_scope($goals,null,null,'yearly');
+    return compact('accounts','systems','accountPnl','systemPnl','calendar','year','goals','goalMap','today','weekStart','monthStart','yearStart','dailyGoal','weeklyGoal','monthlyGoal','yearlyGoal');
 }

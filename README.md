@@ -40,7 +40,45 @@ Phase 11 Goals + Performance
 Phase 11.1 Account/System Goals + Goal Visualization + Calendar Navigation
    ↓
 Phase 11.2 Best Trading Times + Strategy Performance + Bulk Trade Filters
+   ↓
+Phase 11.3 Account-Specific Trade CSV Templates
 ```
+
+## Phase 11.3 — Account-Specific Trade CSV Templates
+
+The CSV importer now supports broker/account-specific CSV formats instead of requiring every account to export the same column layout.
+
+### Account Trade CSV Import section
+
+The **Accounts** page now contains a **Trade CSV Import** section where each account can have its own template. A template stores:
+
+- Template name.
+- CSV delimiter: comma, semicolon, pipe or tab.
+- Whether the CSV has a header row.
+- Source date/time zone.
+- Default-template flag.
+- Mapping from broker CSV columns to the journal's standard trade fields.
+
+Supported standard trade fields include Symbol, Type/Side, Opening Time, Closing Time, Quantity/Lots, Entry Price, Stop Loss, Take Profit, Exit Price, Profit, Fees/Commission, Close Reason and Ticket/Trade ID.
+
+A default Exness-style mapping is provided as the starting point, but the CSV column names can be changed to match any broker/export format.
+
+### Import workflow
+
+The **Import Trades** page now works in this order:
+
+1. Select an Account.
+2. The account's default CSV template is selected automatically when available.
+3. Select another template for that account when needed.
+4. Upload the broker CSV.
+5. Preview the CSV using the selected mapping.
+6. Import the normalized trades into the existing `trades` table.
+
+The selected account/template is validated server-side, so a template belonging to another account cannot be used for an import.
+
+The importer converts broker-specific column names into the application's canonical trade structure. Stop loss and take profit mappings are optional; the existing duplicate-ticket protection remains active.
+
+Multiple templates can be stored for the same account, while one can be marked as the default. This makes it possible to keep older broker export formats alongside a current format without changing PHP code.
 
 ## Phase 11.2 — Best Trading Times, Strategy Performance and Bulk Filters
 
@@ -148,6 +186,7 @@ Filters are applied server-side before the selectable trade list is rendered. Tr
 - Destructive-operation confirmation.
 - Delete all trades and import history.
 - PHP 8.4-compatible `fgetcsv()` usage.
+- Account-specific CSV templates and broker-to-canonical trade-field mapping are implemented in Phase 11.3.
 
 ## Phase 7 — Security, reliability and audit trail
 
@@ -283,6 +322,7 @@ Run migrations in order:
 008_phase9_original_feature_parity.sql
 009_phase11_goals.sql
 010_phase11_goals_by_system.sql
+011_phase11_account_csv_templates.sql
 ```
 
 Phase 11.2 does not require a database migration because its time and strategy analytics and bulk filtering are derived from existing trade, strategy, asset, session and trading-system data.
@@ -320,6 +360,7 @@ php -S localhost:8000 -t public
 | 11 | Goals / Performance | Daily/weekly/monthly/yearly targets, calendar P&L and yearly performance |
 | 11.1 | Account/System Goals | Independent goals, editing/deletion, goal-hit visualization, calendar navigation and weekday ranking |
 | 11.2 | Time / Strategy / Bulk Analytics | Best trading times, most-used strategy by weekday/time, Strategy Performance chart and Trade History filters for bulk updates |
+| 11.3 | Account CSV Templates | Account-specific broker mappings, multiple templates, default-template selection and canonical CSV import |
 
 ## Reference project
 

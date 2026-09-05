@@ -38,7 +38,56 @@ Phase 10 UI Redesign
 Phase 11 Goals + Performance
    ↓
 Phase 11.1 Account/System Goals + Goal Visualization + Calendar Navigation
+   ↓
+Phase 11.2 Best Trading Times + Strategy Performance + Bulk Trade Filters
 ```
+
+## Phase 11.2 — Best Trading Times, Strategy Performance and Bulk Filters
+
+The Dashboard now provides deeper time-of-day and strategy analytics. The Bulk Trade Update page also mirrors the Trade History filtering workflow.
+
+### Best Trading Times of the Day
+
+The **Best Trading Times of the Day** ranking appears below **Best Trading Days of the Week** and:
+
+- Groups closed trades by the **opening hour** stored in `trades.opened_at`.
+- Uses one-hour windows such as `09:00–10:00` and `10:00–11:00`.
+- Ranks periods by **average P&L per closed trade**.
+- Shows rank, time window, number of trades, total P&L, average P&L and win rate.
+- Respects the selected Dashboard Account and Trading System filters.
+- Shows **Most Strategy Used**, based on the strategy with the highest number of trades in that time window.
+
+### Strategy Performance
+
+A new **Strategy Performance** chart shows net P&L grouped by strategy for the selected Dashboard scope. It uses the same account and trading-system filters as the rest of the Dashboard, making it easier to compare which strategies contribute most to overall performance.
+
+### Strategy information in weekday ranking
+
+The **Best Trading Days of the Week** table now includes **Most Strategy Used**, identifying the strategy with the highest trade count for each weekday.
+
+If a trade has no strategy assigned, it is reported as **Unassigned** rather than being omitted from the analytics.
+
+Times are based on the timezone represented by the stored `opened_at` value/database session; the feature does not silently convert timestamps to another timezone.
+
+### Bulk Trade Update filters
+
+The **Bulk Trade Update** page now provides the same filtering dimensions used by Trade History before selecting trades for a bulk operation:
+
+- Symbol
+- Side
+- Status
+- Trading System
+- Asset
+- Strategy
+- Trading Session
+- Grade
+- Timeframe
+- Outcome
+- From / To dates
+- Minimum / Maximum P&L
+- Minimum / Maximum R Multiple
+
+Filters are applied server-side before the selectable trade list is rendered. Trade ownership remains enforced when the bulk update is submitted, so selected IDs cannot be used to modify another user's trades.
 
 ## Phase 1 — Working foundation
 
@@ -217,17 +266,7 @@ A **Best Trading Days of the Week** summary appears below the calendar. It ranks
 - Number of closed trades.
 - Total P&L.
 - Average P&L per trade.
-
-This makes it easy to identify which days of the week historically perform best for the selected account/system scope.
-
-### Phase 11 migrations
-
-```text
-009_phase11_goals.sql
-010_phase11_goals_by_system.sql
-```
-
-Migration 010 changes the goal uniqueness model from one goal per account to one goal per account/system combination while preserving the existing account-level goal represented by a `NULL` trading system.
+- Most Strategy Used for that weekday.
 
 ## Database migrations
 
@@ -245,6 +284,8 @@ Run migrations in order:
 009_phase11_goals.sql
 010_phase11_goals_by_system.sql
 ```
+
+Phase 11.2 does not require a database migration because its time and strategy analytics and bulk filtering are derived from existing trade, strategy, asset, session and trading-system data.
 
 For existing installations, do not skip migrations.
 
@@ -278,6 +319,7 @@ php -S localhost:8000 -t public
 | 10 | UI | Compact trading-journal dashboard and responsive workflow |
 | 11 | Goals / Performance | Daily/weekly/monthly/yearly targets, calendar P&L and yearly performance |
 | 11.1 | Account/System Goals | Independent goals, editing/deletion, goal-hit visualization, calendar navigation and weekday ranking |
+| 11.2 | Time / Strategy / Bulk Analytics | Best trading times, most-used strategy by weekday/time, Strategy Performance chart and Trade History filters for bulk updates |
 
 ## Reference project
 

@@ -37,7 +37,7 @@ Phase 10 UI Redesign
    ↓
 Phase 11 Goals + Performance
    ↓
-Phase 11.1 Account/System Goals + Goal Visualization
+Phase 11.1 Account/System Goals + Goal Visualization + Calendar Navigation
 ```
 
 ## Phase 1 — Working foundation
@@ -204,6 +204,20 @@ Dashboard goal references make progress easier to read:
 - Calendar days that reach the daily target receive a visual goal-hit treatment and check mark.
 - Goal cards show actual performance alongside the configured target.
 - The Monthly P&L Calendar legend uses larger, color-coded status symbols: green **✓** for goal hit, blue **↑** for positive below goal, red **✕** for loss, and gray **•** for no P&L.
+- The calendar has **Prev**, **Today** and **Next** controls so historical and future months can be reviewed without leaving the Dashboard.
+- Calendar navigation preserves the selected Account and Trading System filters.
+
+### Weekday P&L ranking
+
+A **Best Trading Days of the Week** summary appears below the calendar. It ranks weekdays by **average P&L per closed trade** for the selected dashboard scope and displays:
+
+- Rank (`1º`, `2º`, `3º`, etc.).
+- Weekday.
+- Number of closed trades.
+- Total P&L.
+- Average P&L per trade.
+
+This makes it easy to identify which days of the week historically perform best for the selected account/system scope.
 
 ### Phase 11 migrations
 
@@ -262,7 +276,7 @@ php -S localhost:8000 -t public
 | 9 | Feature Parity | Grading, adjusted risk, filters, bulk operations, JSON restore, balance adjustments, broker paste and screenshots |
 | 10 | UI | Compact trading-journal dashboard and responsive workflow |
 | 11 | Goals / Performance | Daily/weekly/monthly/yearly targets, calendar P&L and yearly performance |
-| 11.1 | Account/System Goals | Independent goals, editing/deletion and goal-hit visualization |
+| 11.1 | Account/System Goals | Independent goals, editing/deletion, goal-hit visualization, calendar navigation and weekday ranking |
 
 ## Reference project
 

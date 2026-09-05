@@ -65,6 +65,8 @@ A default Exness-style mapping is provided as the starting point, but the CSV co
 
 The account template form is handled by the dedicated Accounts route, so saving a CSV template no longer submits the normal account form. This prevents unrelated account validation such as **Initial balance is required** from being triggered.
 
+The Accounts page keeps the **Create/Edit Trade CSV template** form above the consolidated **Trade CSV template list**. The list contains an Account column so all templates can be reviewed together without repeating separate account blocks. Editing a template keeps the editor in the same position above the list, and saving returns to the normal Create Template + List layout.
+
 ### Import workflow
 
 The **Import Trades** page works in this order:

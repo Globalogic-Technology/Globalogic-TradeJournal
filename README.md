@@ -38,7 +38,24 @@ Phase 10 UI Redesign
 Phase 11 Goals + Performance
    ↓
 Phase 11.1 Account/System Goals + Goal Visualization + Calendar Navigation
+   ↓
+Phase 11.2 Best Trading Times
 ```
+
+## Phase 11.2 — Best Trading Times of the Day
+
+The Dashboard now includes a **Best Trading Times of the Day** ranking directly below **Best Trading Days of the Week**.
+
+The ranking:
+
+- Groups closed trades by the **opening hour** stored in `trades.opened_at`.
+- Uses one-hour windows such as `09:00–10:00` and `10:00–11:00`.
+- Ranks periods by **average P&L per closed trade**, allowing hours with different trade counts to be compared fairly.
+- Shows rank, time window, number of trades, total P&L, average P&L and win rate.
+- Uses the selected Dashboard Account and Trading System filters.
+- Makes it easy to identify the strongest and weakest hours for the user's trading activity.
+
+Times are based on the timezone represented by the stored `opened_at` value/database session; the feature does not silently convert timestamps to another timezone.
 
 ## Phase 1 — Working foundation
 
@@ -278,6 +295,7 @@ php -S localhost:8000 -t public
 | 10 | UI | Compact trading-journal dashboard and responsive workflow |
 | 11 | Goals / Performance | Daily/weekly/monthly/yearly targets, calendar P&L and yearly performance |
 | 11.1 | Account/System Goals | Independent goals, editing/deletion, goal-hit visualization, calendar navigation and weekday ranking |
+| 11.2 | Best Trading Times | Hourly time-of-day P&L ranking with trade count and win rate |
 
 ## Reference project
 

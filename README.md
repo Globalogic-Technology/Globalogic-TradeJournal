@@ -32,6 +32,12 @@ Phase 7  Security + Reliability + Audit Trail
 Phase 8  Review Workflow + Notifications
    ↓
 Phase 9  Original Feature Parity
+   ↓
+Phase 10 UI Redesign
+   ↓
+Phase 11 Goals + Performance
+   ↓
+Phase 11.1 Account/System Goals + Goal Visualization + Calendar Navigation
 ```
 
 ## Phase 1 — Working foundation
@@ -55,13 +61,10 @@ Phase 9  Original Feature Parity
 
 ## Phase 3 — Trading configuration and risk engine
 
-- Trading systems.
-- Strategies.
-- Assets and asset configuration.
-- Asset fees.
+- Trading systems and strategies.
+- Assets and asset fees.
 - Trading sessions and time zones.
-- Risk settings.
-- Account configuration and default systems.
+- Risk settings and account configuration.
 - Ideal risk, actual risk, risk %, position size, Expected R, R Multiple, risk deviation and balance calculations.
 - Contract-size and point-value support.
 
@@ -76,32 +79,25 @@ Phase 9  Original Feature Parity
 - Mistakes, lessons, what went well and what to change.
 - Review timestamps.
 - Journal tags.
+- Multi-select Tags and Mistakes controls with visible option lists and custom tag support.
 
 ## Phase 5 — Performance and risk analytics
 
-- Win rate.
-- Net P&L.
-- Profit factor.
-- Expectancy per trade.
-- Maximum drawdown.
-- Trade Sharpe.
+- Win rate, net P&L, profit factor and expectancy.
+- Maximum drawdown and trade Sharpe.
 - Total fees and fee impact.
 - Equity curve.
-- Average ideal/actual risk.
-- Risk deviation and over-risk trades.
-- Average R Multiple.
+- Average ideal/actual risk and risk deviation.
+- Over-risk trades and average R Multiple.
 - System, strategy, session and day-of-week breakdowns.
 
 ## Phase 6 — Import pipeline and data management
 
 - CSV preview and validation.
-- Duplicate detection.
-- Import result reporting.
-- Import history.
-- Error summaries.
+- Duplicate detection and import result reporting.
+- Import history and error summaries.
 - Destructive-operation confirmation.
-- Delete all trades.
-- Delete import history.
+- Delete all trades and import history.
 - PHP 8.4-compatible `fgetcsv()` usage.
 
 ## Phase 7 — Security, reliability and audit trail
@@ -111,8 +107,7 @@ Phase 9  Original Feature Parity
 - Content Security Policy with nonces.
 - Security headers and HSTS on HTTPS.
 - User-owned queries.
-- Audit log.
-- Auditing for CSV preview/import and destructive data operations.
+- Audit log and auditing for data operations.
 
 ## Phase 8 — Review workflow and notifications
 
@@ -121,149 +116,118 @@ Phase 9  Original Feature Parity
 - Review due dates and notes.
 - Automatic review creation for closed trades.
 - In-app notifications.
-- Mark notifications as read.
 
 ## Phase 9 — Original feature parity
 
 Phase 9 closes the major functionality gaps identified by comparing the PHP application with the original Trading Journal project.
 
-### 9.1 Trade grading
+### Trade grading
 
-The trade model now supports the original grade scale:
+The trade model supports:
 
-```text
-A++++  A+++  A++  A+  A  B  C  D  E  F
-```
+`A++++`, `A+++`, `A++`, `A+`, `A`, `B`, `C`, `D`, `E`, `F`
 
-Each grade has a risk multiplier:
+with grade-based risk multipliers, including 2.50x for A++++, 2.00x for A+++, 1.25x for A++, 1.00x for A+, and progressively smaller multipliers through F.
 
-| Grade | Multiplier |
-|---|---:|
-| A++++ | 2.50x |
-| A+++ | 2.00x |
-| A++ | 1.25x |
-| A+ | 1.00x |
-| A | 0.80x |
-| B | 0.50x |
-| C | 0.30x |
-| D | 0.10x |
-| E | 0.05x |
-| F | 0.01x |
+### Other parity features
 
-### 9.2 Grade-adjusted risk
+- Grade-adjusted risk.
+- Ideal stop-loss calculator.
+- Timeframes: `1m`, `5m`, `15m`, `30m`, `1h`, `4h`, `1d`, `1w`.
+- Advanced trade filters.
+- Bulk trade updates.
+- JSON restore with duplicate detection.
+- Balance adjustments.
+- Broker paste quick entry.
+- Secure trade screenshots.
 
-```text
-Base Ideal Risk
-      ↓
-Grade multiplier
-      ↓
-Grade-adjusted Ideal Risk
-      ↓
-Actual Risk / Position Size / Expected R
-```
+## Phase 10 — UI redesign
 
-The trade form displays base ideal risk, adjusted ideal risk and the multiplier.
+The application UI was redesigned around the original project's compact trading-journal workflow:
 
-### 9.3 Ideal stop-loss calculator
+- Clean white canvas.
+- Compact horizontal primary navigation.
+- Dense KPI cards and report panels.
+- Responsive trade grids and tables.
+- Dashboard, Advanced Analytics, System Report and Fee Report.
+- Trade screenshots integrated with the trade workflow.
 
-The Trade form now includes **Calculate Ideal Stop Loss**. It calculates a stop level from entry, direction, quantity, effective ideal risk, fees and asset contract/point configuration.
+## Phase 11 — P&L Goals and Performance
 
-### 9.4 Timeframes
+The Dashboard now provides goal-oriented performance tracking for:
 
-Supported timeframes:
+- Daily P&L.
+- Weekly P&L.
+- Monthly P&L.
+- Yearly P&L.
+- Monthly P&L calendar.
+- Year Performance chart.
+- Monthly Performance chart with goal reference.
+- Goal progress cards with goal-hit indicators.
 
-`1m`, `5m`, `15m`, `30m`, `1h`, `4h`, `1d`, `1w`
+The monthly calendar makes the daily target visible directly on each day.
 
-### 9.5 Advanced trade filtering
+## Phase 11.1 — Goals by Account and Trading System
 
-Trade History now supports filters for:
+P&L goals can now be configured independently by **Account** and optionally by **Trading System**.
 
-- Symbol.
-- Side.
-- Status.
-- Trading system.
-- Grade.
-- Timeframe.
-- Outcome.
-- Date range.
-- Minimum/maximum P&L.
-- Minimum/maximum Expected R.
+Examples of trading systems include:
 
-### 9.6 Bulk updates
+- Day Trade
+- Swing Trade
+- Position Trade
+- Buy & Hold
 
-The `/bulk-trades` workflow supports selecting multiple trades and updating:
+The application uses the systems configured in the `trading_systems` table, so these names can be created or renamed to match the user's trading methodology.
 
-- Trading system.
-- Strategy.
-- Session.
-- Grade.
-- Timeframe.
+### Goal scopes
 
-### 9.7 JSON restore
+- **Account total:** applies to all systems for an account.
+- **Account + System:** applies only to trades assigned to that trading system for that account.
+- Multiple account/system combinations can have independent daily, weekly, monthly and yearly targets.
 
-The `/json-import` workflow provides:
+### Goal editing and deletion
 
-```text
-JSON backup
-    ↓
-Upload
-    ↓
-Validate / preview
-    ↓
-Detect duplicate tickets
-    ↓
-Restore trades
-```
+The **Current Goals** table supports:
 
-### 9.8 Balance adjustments
+- **Edit:** loads the existing goal into the form and updates the same database record instead of creating a duplicate.
+- **Delete:** removes the selected goal after confirmation.
 
-The `/balance-adjustments` workflow records deposits, withdrawals and other balance corrections with:
+The server validates ownership for accounts, trading systems and goals before modifying data.
 
-- Account.
-- Positive/negative amount.
-- Date/time.
-- Reason.
-- History.
+### Goal visualization
 
-### 9.9 Broker paste
+Dashboard goal references make progress easier to read:
 
-The `/broker-paste` quick-entry workflow parses the original broker multiline format, including asset, direction, dates/times, position size, entry/exit prices, P&L, commission and ticket.
+- Goal reference lines are shown on performance charts.
+- A green check mark indicates that the target has been reached.
+- Calendar days that reach the daily target receive a visual goal-hit treatment and check mark.
+- Goal cards show actual performance alongside the configured target.
+- The Monthly P&L Calendar legend uses larger, color-coded status symbols: green **✓** for goal hit, blue **↑** for positive below goal, red **✕** for loss, and gray **•** for no P&L.
+- The calendar has **Prev**, **Today** and **Next** controls so historical and future months can be reviewed without leaving the Dashboard.
+- Calendar navigation preserves the selected Account and Trading System filters.
+- Calendar navigation loads only the calendar section through an asynchronous request and preserves the user's current page scroll position.
 
-### 9.10 Navigation
+### Weekday P&L ranking
 
-Phase 9 exposes the new functionality directly in the application navigation:
+A **Best Trading Days of the Week** summary appears below the calendar. It ranks weekdays by **average P&L per closed trade** for the selected dashboard scope and displays:
 
-- Bulk Update.
-- Restore JSON.
-- Balance.
-- Broker Paste.
-- Existing Import, Backup, Review Queue, Notifications and Audit Log remain available.
+- Rank (`1º`, `2º`, `3º`, etc.).
+- Weekday.
+- Number of closed trades.
+- Total P&L.
+- Average P&L per trade.
 
-### Phase 9 data flow
+This makes it easy to identify which days of the week historically perform best for the selected account/system scope.
+
+### Phase 11 migrations
 
 ```text
-Trade Entry
-   ├── Grade
-   ├── Timeframe
-   ├── Broker Paste
-   └── Ideal Stop Loss
-          ↓
-Grade-adjusted Risk Engine
-          ↓
-Trade History + Advanced Filters
-          ↓
-Bulk Operations / JSON Restore / Balance Adjustments
-          ↓
-Analytics + Review Workflow
+009_phase11_goals.sql
+010_phase11_goals_by_system.sql
 ```
 
-### Phase 9 migration
-
-```text
-database/migrations/008_phase9_original_feature_parity.sql
-```
-
-The migration adds grade, timeframe and screenshot metadata to trades, plus balance-adjustment and trade-tag tables.
+Migration 010 changes the goal uniqueness model from one goal per account to one goal per account/system combination while preserving the existing account-level goal represented by a `NULL` trading system.
 
 ## Database migrations
 
@@ -278,6 +242,8 @@ Run migrations in order:
 006_phase7_audit_and_hardening.sql
 007_phase8_notifications.sql
 008_phase9_original_feature_parity.sql
+009_phase11_goals.sql
+010_phase11_goals_by_system.sql
 ```
 
 For existing installations, do not skip migrations.
@@ -303,12 +269,15 @@ php -S localhost:8000 -t public
 | 1 | Foundation | Users, accounts, trades, authentication |
 | 2 | Import / Backup | CSV import, JSON backup, basic analytics |
 | 3 | Configuration / Risk | Systems, strategies, assets, sessions, risk engine |
-| 4 | Journal | Qualitative journal and tags |
+| 4 | Journal | Qualitative journal, tags and multi-select review fields |
 | 5 | Analytics | Performance, risk and breakdown analytics |
 | 6 | Data Management | Validated imports and import history |
 | 7 | Security / Audit | Hardening and audit trail |
 | 8 | Review / Notifications | Review queue and notifications |
-| 9 | Feature Parity | Grading, adjusted risk, advanced filters, bulk operations, JSON restore, balance adjustments and broker paste |
+| 9 | Feature Parity | Grading, adjusted risk, filters, bulk operations, JSON restore, balance adjustments, broker paste and screenshots |
+| 10 | UI | Compact trading-journal dashboard and responsive workflow |
+| 11 | Goals / Performance | Daily/weekly/monthly/yearly targets, calendar P&L and yearly performance |
+| 11.1 | Account/System Goals | Independent goals, editing/deletion, goal-hit visualization, calendar navigation and weekday ranking |
 
 ## Reference project
 

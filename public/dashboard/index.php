@@ -3,55 +3,15 @@ declare(strict_types=1);
 require dirname(__DIR__,2).'/app/bootstrap.php';
 require dirname(__DIR__,2).'/app/phase11.php';
 $user=require_auth();
-$stmt=db()->prepare('SELECT t.*,a.name account_name,a.currency,a.initial_balance,a.ideal_risk FROM trades t JOIN accounts a ON a.id=t.account_id AND a.user_id=t.user_id WHERE t.user_id=? ORDER BY t.opened_at ASC,t.id ASC');
-$stmt->execute([$user['id']]);
-$trades=$stmt->fetchAll();
-$closed=[];
-foreach($trades as $t){
-    $p=trade_pnl($t);
-    if($p!==null){$t['pnl']=$p;$t['r']=$t['ideal_risk']>0?$p/(float)$t['ideal_risk']:null;$closed[]=$t;}
-}
-$pnls=array_column($closed,'pnl');
-$count=count($pnls);
-$wins=count(array_filter($pnls,fn($p)=>$p>0));
-$grossWin=array_sum(array_filter($pnls,fn($p)=>$p>0));
-$grossLoss=abs(array_sum(array_filter($pnls,fn($p)=>$p<0)));
-$net=array_sum($pnls);
-$pf=$grossLoss>0?$grossWin/$grossLoss:null;
-$wr=$count?100*$wins/$count:null;
-$exp=$count?$net/$count:null;
-$largestWin=$pnls?max($pnls):null;
-$largestLoss=$pnls?min($pnls):null;
-$equity=0;$equityLabels=[];$equityData=[];$balance=0;$balanceLabels=[];$balanceData=[];$rValues=[];$systems=[];$months=[];
-foreach($closed as $t){
-    $equity+=$t['pnl'];
-    $equityLabels[]=(string)$t['id'];
-    $equityData[]=round($equity,4);
-    $balance=(float)$t['initial_balance']+$equity;
-    $balanceLabels[]=(string)$t['id'];
-    $balanceData[]=round($balance,4);
-    if($t['r']!==null)$rValues[]=$t['r'];
-    $month=date('Y-m',strtotime($t['closed_at']??$t['opened_at']));
-    $months[$month]=($months[$month]??0)+$t['pnl'];
-}
-$systemLabels=[];$systemData=[];
-if($closed){
-    $ids=array_column($closed,'id');
-    $in=implode(',',array_fill(0,count($ids),'?'));
-    $q=db()->prepare("SELECT t.id,ts.name system_name FROM trades t LEFT JOIN trading_systems ts ON ts.id=t.trading_system_id WHERE t.id IN ($in) AND t.user_id=?");
-    $q->execute([...$ids,$user['id']]);
-    $names=[];
-    foreach($q->fetchAll() as $x){$names[(int)$x['id']]=$x['system_name']??'Unassigned';}
-    foreach($closed as $t){$name=$names[(int)$t['id']]??'Unassigned';$systems[$name]=($systems[$name]??0)+$t['pnl'];}
-    $systemLabels=array_keys($systems);
-    $systemData=array_map(fn($v)=>round($v,2),array_values($systems));
-}
-$monthLabels=array_keys($months);
-$monthData=array_map(fn($v)=>round($v,2),array_values($months));
-$rBuckets=['<-2R'=>0,'-2R'=>0,'-1R'=>0,'0R'=>0,'1R'=>0,'2R'=>0,'3R+'=>0];
-foreach($rValues as $r){
-    $k=$r<-2?'<-2R':($r<-1?'-2R':($r<0?'-1R':($r<1?'0R':($r<2?'1R':($r<3?'2R':'3R+')))));
-    $rBuckets[$k]++;
-}
-$goalPerformance=phase11_performance(db(),(int)$user['id']);
-render('dashboard_report',['title'=>'Dashboard','count'=>$count,'wr'=>$wr,'pf'=>$pf,'exp'=>$exp,'largestWin'=>$largestWin,'largestLoss'=>$largestLoss,'net'=>$net,'equityLabels'=>$equityLabels,'equityData'=>$equityData,'balanceLabels'=>$balanceLabels,'balanceData'=>$balanceData,'systemLabels'=>$systemLabels,'systemData'=>$systemData,'monthLabels'=>$monthLabels,'monthData'=>$monthData,'rLabels'=>array_keys($rBuckets),'rData'=>array_values($rBuckets),'goalPerformance'=>$goalPerformance]);
+$accountFilter=filter_var($_GET['account']??null,FILTER_VALIDATE_INT)?:null;$systemFilter=filter_var($_GET['system']??null,FILTER_VALIDATE_INT)?:null;
+if($accountFilter!==null){$q=db()->prepare('SELECT id FROM accounts WHERE id=? AND user_id=?');$q->execute([$accountFilter,$user['id']]);if(!$q->fetchColumn())$accountFilter=null;}
+if($systemFilter!==null){$q=db()->prepare('SELECT id FROM trading_systems WHERE id=? AND user_id=?');$q->execute([$systemFilter,$user['id']]);if(!$q->fetchColumn())$systemFilter=null;}
+$stmt=db()->prepare('SELECT t.*,a.name account_name,a.currency,a.initial_balance,a.ideal_risk,ts.name system_name FROM trades t JOIN accounts a ON a.id=t.account_id AND a.user_id=t.user_id LEFT JOIN trading_systems ts ON ts.id=t.trading_system_id AND ts.user_id=t.user_id WHERE t.user_id=?'.($accountFilter!==null?' AND t.account_id=?':'').($systemFilter!==null?' AND t.trading_system_id=?':'').' ORDER BY t.opened_at ASC,t.id ASC');$params=[$user['id']];if($accountFilter!==null)$params[]=$accountFilter;if($systemFilter!==null)$params[]=$systemFilter;$stmt->execute($params);$trades=$stmt->fetchAll();
+$closed=[];foreach($trades as $t){$p=trade_pnl($t);if($p!==null){$t['pnl']=$p;$t['r']=$t['ideal_risk']>0?$p/(float)$t['ideal_risk']:null;$closed[]=$t;}}
+$pnls=array_column($closed,'pnl');$count=count($pnls);$wins=count(array_filter($pnls,fn($p)=>$p>0));$grossWin=array_sum(array_filter($pnls,fn($p)=>$p>0));$grossLoss=abs(array_sum(array_filter($pnls,fn($p)=>$p<0)));$net=array_sum($pnls);$pf=$grossLoss>0?$grossWin/$grossLoss:null;$wr=$count?100*$wins/$count:null;$exp=$count?$net/$count:null;$largestWin=$pnls?max($pnls):null;$largestLoss=$pnls?min($pnls):null;
+$equity=0;$equityLabels=[];$equityData=[];$balanceLabels=[];$balanceData=[];$rValues=[];$systems=[];$months=[];foreach($closed as $t){$equity+=$t['pnl'];$equityLabels[]=(string)$t['id'];$equityData[]=round($equity,4);$balanceLabels[]=(string)$t['id'];$balanceData[]=round((float)$t['initial_balance']+$equity,4);if($t['r']!==null)$rValues[]=$t['r'];$month=date('Y-m',strtotime($t['closed_at']??$t['opened_at']));$months[$month]=($months[$month]??0)+$t['pnl'];$name=$t['system_name']??'Unassigned';$systems[$name]=($systems[$name]??0)+$t['pnl'];}
+$systemLabels=array_keys($systems);$systemData=array_map(fn($v)=>round($v,2),array_values($systems));$monthLabels=array_keys($months);$monthData=array_map(fn($v)=>round($v,2),array_values($months));$rBuckets=['<-2R'=>0,'-2R'=>0,'-1R'=>0,'0R'=>0,'1R'=>0,'2R'=>0,'3R+'=>0];foreach($rValues as $r){$k=$r<-2?'<-2R':($r<-1?'-2R':($r<0?'-1R':($r<1?'0R':($r<2?'1R':($r<3?'2R':'3R+')))));$rBuckets[$k]++;}
+$calendarMonthRaw=trim((string)($_GET['month']??''));if(!preg_match('/^\d{4}-\d{2}$/',$calendarMonthRaw))$calendarMonthRaw=date('Y-m');$calendarMonth=DateTimeImmutable::createFromFormat('!Y-m-d',$calendarMonthRaw.'-01')?:new DateTimeImmutable('first day of this month');$goalPerformance=phase11_performance(db(),(int)$user['id'],$accountFilter,$systemFilter);$goalPerformance['monthStart']=$calendarMonth;$goalPerformance['calendar']=[];$days=(int)$calendarMonth->modify('first day of next month')->modify('-1 day')->format('d');for($d=1;$d<=$days;$d++){$day=$calendarMonth->setDate((int)$calendarMonth->format('Y'),(int)$calendarMonth->format('m'),$d);$goalPerformance['calendar'][$day->format('Y-m-d')]=phase11_period_pnl(db(),(int)$user['id'],$day->format('Y-m-d H:i:s'),$day->modify('+1 day')->format('Y-m-d H:i:s'),$accountFilter,$systemFilter);}
+$weekdayWhere='t.user_id=? AND t.status="closed" AND t.exit_price IS NOT NULL';$weekdayParams=[(int)$user['id']];if($accountFilter!==null){$weekdayWhere.=' AND t.account_id=?';$weekdayParams[]=$accountFilter;}if($systemFilter!==null){$weekdayWhere.=' AND t.trading_system_id=?';$weekdayParams[]=$systemFilter;}$q=db()->prepare('SELECT DAYOFWEEK(t.closed_at) weekday_num,COUNT(*) trade_count,COALESCE(SUM('.phase11_pnl_expr().'),0) total_pnl,COALESCE(AVG('.phase11_pnl_expr().'),0) avg_pnl FROM trades t WHERE '.$weekdayWhere.' GROUP BY DAYOFWEEK(t.closed_at)');$q->execute($weekdayParams);$weekdayNames=[1=>'Sunday',2=>'Monday',3=>'Tuesday',4=>'Wednesday',5=>'Thursday',6=>'Friday',7=>'Saturday'];$weekdayRanking=[];foreach($q->fetchAll() as $r){$weekdayRanking[]=['day'=>$weekdayNames[(int)$r['weekday_num']],'trades'=>(int)$r['trade_count'],'total_pnl'=>(float)$r['total_pnl'],'avg_pnl'=>(float)$r['avg_pnl']];}usort($weekdayRanking,fn($a,$b)=>$b['avg_pnl']<=>$a['avg_pnl']);foreach($weekdayRanking as $i=>&$r)$r['rank']=$i+1;unset($r);$goalPerformance['weekdayRanking']=$weekdayRanking;
+if(isset($_GET['calendar_only'])&&$_GET['calendar_only']==='1'){require dirname(__DIR__,2).'/app/views/dashboard_calendar.php';exit;}
+render('dashboard_report',['title'=>'Dashboard','count'=>$count,'wr'=>$wr,'pf'=>$pf,'exp'=>$exp,'largestWin'=>$largestWin,'largestLoss'=>$largestLoss,'net'=>$net,'equityLabels'=>$equityLabels,'equityData'=>$equityData,'balanceLabels'=>$balanceLabels,'balanceData'=>$balanceData,'systemLabels'=>$systemLabels,'systemData'=>$systemData,'monthLabels'=>$monthLabels,'monthData'=>$monthData,'rLabels'=>array_keys($rBuckets),'rData'=>array_values($rBuckets),'goalPerformance'=>$goalPerformance,'selectedAccount'=>$accountFilter,'selectedSystem'=>$systemFilter]);

@@ -79,6 +79,7 @@ Phase 11.1 Account/System Goals + Goal Visualization
 - Mistakes, lessons, what went well and what to change.
 - Review timestamps.
 - Journal tags.
+- Multi-select Tags and Mistakes controls with visible option lists and custom tag support.
 
 ## Phase 5 — Performance and risk analytics
 
@@ -202,6 +203,7 @@ Dashboard goal references make progress easier to read:
 - A green check mark indicates that the target has been reached.
 - Calendar days that reach the daily target receive a visual goal-hit treatment and check mark.
 - Goal cards show actual performance alongside the configured target.
+- The Monthly P&L Calendar legend uses larger, color-coded status symbols: green **✓** for goal hit, blue **↑** for positive below goal, red **✕** for loss, and gray **•** for no P&L.
 
 ### Phase 11 migrations
 
@@ -252,7 +254,7 @@ php -S localhost:8000 -t public
 | 1 | Foundation | Users, accounts, trades, authentication |
 | 2 | Import / Backup | CSV import, JSON backup, basic analytics |
 | 3 | Configuration / Risk | Systems, strategies, assets, sessions, risk engine |
-| 4 | Journal | Qualitative journal and tags |
+| 4 | Journal | Qualitative journal, tags and multi-select review fields |
 | 5 | Analytics | Performance, risk and breakdown analytics |
 | 6 | Data Management | Validated imports and import history |
 | 7 | Security / Audit | Hardening and audit trail |

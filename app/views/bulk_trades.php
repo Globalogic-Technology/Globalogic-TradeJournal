@@ -10,7 +10,7 @@
 <p><label>Asset</label><select name="asset_id"><option value="">All assets</option><?php foreach(($assets??[]) as $x):?><option value="<?=e($x['id'])?>" <?=((int)($filters['asset_id']??0)===(int)$x['id'])?'selected':''?>><?=e($x['symbol'].' — '.$x['name'])?></option><?php endforeach;?></select></p>
 <p><label>Grade</label><select name="grade"><option value="">All grades</option><?php foreach($grades as $g):?><option value="<?=$g?>" <?=($filters['grade']??'')===$g?'selected':''?>><?=$g?></option><?php endforeach;?></select></p>
 <p><label>Timeframe</label><select name="timeframe"><option value="">All timeframes</option><?php foreach($timeframes as $tf):?><option value="<?=$tf?>" <?=($filters['timeframe']??'')===$tf?'selected':''?>><?=$tf?></option><?php endforeach;?></select></p>
-<p><label>Outcome</label><select name="outcome"><option value="">All outcomes</option><?php foreach(['Win','Loss','Breakeven'] as $o):?><option value="<?=$o?>" <?=($filters['outcome']??'')===$o?'selected':''?>><?=$o?></option><?php endforeach;?></select></p>
+<p><label>Outcome</label><select name="outcome"><option value="">All outcomes</option><?php foreach([['win','Win'],['loss','Loss'],['breakeven','Breakeven']] as $o):?><option value="<?=$o[0]?>" <?=($filters['outcome']??'')===$o[0]?'selected':''?>><?=$o[1]?></option><?php endforeach;?></select></p>
 <p><label>From</label><input type="date" name="date_from" value="<?=e($filters['date_from']??'')?>"></p><p><label>To</label><input type="date" name="date_to" value="<?=e($filters['date_to']??'')?>"></p>
 <p><label>Min P&amp;L</label><input type="number" step=".01" name="min_pnl" value="<?=e($filters['min_pnl']??'')?>"></p><p><label>Max P&amp;L</label><input type="number" step=".01" name="max_pnl" value="<?=e($filters['max_pnl']??'')?>"></p>
 <p><label>Min Expected R</label><input type="number" step=".1" name="min_r" value="<?=e($filters['min_r']??'')?>"></p><p><label>Max Expected R</label><input type="number" step=".1" name="max_r" value="<?=e($filters['max_r']??'')?>"></p>
@@ -18,7 +18,7 @@
 </form></div>
 <form method="post" class="card" id="bulk-form">
 <?=csrf_field()?>
-<?php foreach(($filters??[]) as $k=>$v):if($v!==''&&$v!==null):?><input type="hidden" name="filter_<?=e($k)?>" value="<?=e((string)$v)\?>"><?php endif;endforeach;?>
+<?php foreach(($filters??[]) as $k=>$v):if($v!==''&&$v!==null):?><input type="hidden" name="filter_<?=e($k)?>" value="<?=e((string)$v)?>"><?php endif;endforeach;?>
 <div class="section-heading"><div><h2>Bulk Update</h2><div class="sub">Select the filtered trades and apply the same system, strategy, session, grade or timeframe.</div></div></div>
 <div class="grid"><p><label>Field</label><select name="field" required><option value="grade">Grade</option><option value="timeframe">Timeframe</option><option value="trading_system_id">Trading system</option><option value="strategy_id">Strategy</option><option value="trading_session_id">Session</option></select></p>
 <p><label>Value</label><select name="value" id="bulk-value" required><option value="">Select</option><?php foreach($grades as $x):?><option value="<?=$x?>"><?=$x?></option><?php endforeach;?></select></p></div>

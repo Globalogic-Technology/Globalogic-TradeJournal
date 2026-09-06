@@ -77,9 +77,10 @@ CREATE TABLE IF NOT EXISTS review_settings (
     CONSTRAINT fk_review_settings_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- Seed reusable goals for every existing user. CROSS JOIN is intentional:
--- the goal catalog is applied to each user, and the unique key prevents duplicates.
-INSERT INTO review_goals(user_id,name,goal_type)
+-- Seed reusable goals for every existing user.
+-- INSERT IGNORE is deliberately used instead of ON DUPLICATE KEY UPDATE so this
+-- migration works with older MariaDB/phpMyAdmin SQL parsers as well.
+INSERT IGNORE INTO review_goals(user_id,name,goal_type)
 SELECT u.id,v.name,v.goal_type
 FROM users u
 CROSS JOIN (
@@ -97,5 +98,4 @@ CROSS JOIN (
     UNION ALL SELECT 'Trade only when mentally prepared','psychology'
     UNION ALL SELECT 'Reach my P&L target','performance'
     UNION ALL SELECT 'Achieve positive R','performance'
-) v
-ON DUPLICATE KEY UPDATE goal_type=VALUES(goal_type), is_active=1;
+) v;

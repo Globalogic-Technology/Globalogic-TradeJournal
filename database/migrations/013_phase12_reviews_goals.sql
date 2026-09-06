@@ -1,5 +1,6 @@
 -- Trade Journal Phase 12: Pre/Post reviews and reusable goals.
 -- Run after migrations 001-012.
+-- Reusable default goals are seeded by app/phase12.php for each user.
 
 USE trading_journal;
 
@@ -76,26 +77,3 @@ CREATE TABLE IF NOT EXISTS review_settings (
     UNIQUE KEY uq_review_settings_user(user_id),
     CONSTRAINT fk_review_settings_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
-
--- Seed reusable goals for every existing user.
--- INSERT IGNORE is deliberately used instead of ON DUPLICATE KEY UPDATE so this
--- migration works with older MariaDB/phpMyAdmin SQL parsers as well.
-INSERT IGNORE INTO review_goals(user_id,name,goal_type)
-SELECT u.id,v.name,v.goal_type
-FROM users u
-CROSS JOIN (
-    SELECT 'Follow my trading plan' AS name,'process' AS goal_type
-    UNION ALL SELECT 'Take only planned setups','process'
-    UNION ALL SELECT 'Avoid revenge trading','psychology'
-    UNION ALL SELECT 'Avoid FOMO','psychology'
-    UNION ALL SELECT 'Avoid overtrading','process'
-    UNION ALL SELECT 'Respect my stop loss','risk'
-    UNION ALL SELECT 'Do not move my stop loss','risk'
-    UNION ALL SELECT 'Respect my maximum number of trades','risk'
-    UNION ALL SELECT 'Stop when my loss limit is reached','risk'
-    UNION ALL SELECT 'Stay emotionally neutral','psychology'
-    UNION ALL SELECT 'Maintain focus','psychology'
-    UNION ALL SELECT 'Trade only when mentally prepared','psychology'
-    UNION ALL SELECT 'Reach my P&L target','performance'
-    UNION ALL SELECT 'Achieve positive R','performance'
-) v;

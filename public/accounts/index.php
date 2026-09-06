@@ -18,7 +18,7 @@ try {
             $accountId = (int)($_POST['account_id'] ?? 0);
             $id = filter_var($_POST['template_id'] ?? null, FILTER_VALIDATE_INT) ?: null;
             $mapping = is_array($_POST['mapping'] ?? null) ? $_POST['mapping'] : [];
-            AccountCsvTemplateService::save($db,$uid,$accountId,$id,trim((string)($_POST['template_name']??'')),(string)($_POST['delimiter_char']??','),isset($_POST['has_header']),trim((string)($_POST['date_timezone']??'UTC')),$mapping,isset($_POST['is_default']));
+            AccountCsvTemplateService::save($db,$uid,$accountId,$id,trim((string)($_POST['template_name']??'')),(string)($_POST['delimiter_char']??','),isset($_POST['has_header']),trim((string)($_POST['date_timezone']??'UTC')),$mapping,isset($_POST['is_default']),(string)($_POST['import_mode']??'standard'));
             flash('success','CSV template saved.'); redirect('/accounts');
         }
         if ($action === 'csv_template_delete') {
@@ -38,7 +38,7 @@ try {
     }
 
     $s=$db->prepare('SELECT * FROM accounts WHERE user_id=? ORDER BY name');$s->execute([$uid]);$accounts=$s->fetchAll();
-    $t=$db->prepare('SELECT id,account_id,name,delimiter_char,has_header,date_timezone,mapping_json,is_default FROM account_csv_templates WHERE user_id=? ORDER BY account_id,is_default DESC,name');$t->execute([$uid]);$templates=$t->fetchAll();
+    $t=$db->prepare('SELECT id,account_id,name,import_mode,delimiter_char,has_header,date_timezone,mapping_json,is_default FROM account_csv_templates WHERE user_id=? ORDER BY account_id,is_default DESC,name');$t->execute([$uid]);$templates=$t->fetchAll();
     foreach($templates as &$template)$template['mapping']=json_decode((string)$template['mapping_json'],true)?:[];unset($template);
 
     $editAccount=null;$editAccountId=filter_var($_GET['edit_account']??null,FILTER_VALIDATE_INT)?:0;
@@ -46,6 +46,6 @@ try {
     $editCsvTemplate=null;$editCsvTemplateId=filter_var($_GET['edit_csv_template']??null,FILTER_VALIDATE_INT)?:0;
     if($editCsvTemplateId)foreach($templates as $template)if((int)$template['id']===$editCsvTemplateId){$editCsvTemplate=$template;break;}
 
-    render('accounts',['title'=>'Accounts','accounts'=>$accounts,'csvTemplates'=>$templates,'editAccount'=>$editAccount,'editCsvTemplate'=>$editCsvTemplate]);
+    render('accounts',['title'=>'Accounts','accounts'=>$accounts,'csvTemplates'=>$templates,'editAccount'=>$editAccount,'editCsvTemplate'=>$editCsvTemplate,'csvImportModes'=>AccountCsvTemplateService::IMPORT_MODES]);
 } catch(InvalidArgumentException $e){flash('error',$e->getMessage());redirect('/accounts');}
   catch(Throwable $e){error_log((string)$e);if(db()->inTransaction())db()->rollBack();if(!headers_sent())http_response_code(500);exit('An unexpected error occurred.');}

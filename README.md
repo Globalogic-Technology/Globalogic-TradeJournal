@@ -119,6 +119,29 @@ The application checks review status every **60 seconds** while the authenticate
 - The review status endpoint explicitly loads the notification service so the popup check returns valid JSON instead of failing silently.
 - The popup can be temporarily dismissed, but the Day Pre Review server-side restriction remains active until the review is completed.
 
+### Phase 12 error diagnostics and database prerequisites
+
+Phase 12 now validates its required database tables before loading any review page. If the schema is incomplete, the application reports the missing table names and tells the user which migrations must be run instead of showing only the generic application error page.
+
+The PHP built-in-server route shims for Pre/Post Review, Review Goals, Review Schedule, Review Exceptions and Review Status also catch unexpected `Throwable` errors, log the complete exception server-side, and return a useful user-facing error. Review Status returns a JSON error so the 60-second popup check does not fail silently.
+
+For an existing installation, verify the Phase 12 schema with:
+
+```sql
+SHOW TABLES LIKE 'review_goals';
+SHOW TABLES LIKE 'period_reviews';
+SHOW TABLES LIKE 'period_review_goals';
+SHOW TABLES LIKE 'review_settings';
+SHOW TABLES LIKE 'review_exceptions';
+```
+
+If any table is missing, run these migrations in order:
+
+```text
+013_phase12_reviews_goals.sql
+014_phase12_review_exceptions.sql
+```
+
 ### Day Pre Review enforcement
 
 Trade creation/editing and trade imports are blocked server-side while a scheduled Day Pre Review is pending. This protects the rule even if JavaScript is disabled or bypassed.

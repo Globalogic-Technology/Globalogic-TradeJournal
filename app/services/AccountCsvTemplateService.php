@@ -23,26 +23,29 @@ final class AccountCsvTemplateService
         'ticket' => 'Ticket / Trade ID',
     ];
 
+    public const IMPORT_MODES = [
+        'standard' => 'Standard Trade CSV',
+        'interactive_brokers_orders' => 'Interactive Brokers Orders CSV (Smart)',
+    ];
+
     public static function normalizeMapping(string $json): array
     {
         $mapping = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
         if (!is_array($mapping)) throw new RuntimeException('Invalid CSV field mapping.');
         $result = [];
-        foreach (array_keys(self::FIELDS) as $field) {
-            $value = trim((string)($mapping[$field] ?? ''));
-            $result[$field] = $value;
-        }
+        foreach (array_keys(self::FIELDS) as $field) $result[$field] = trim((string)($mapping[$field] ?? ''));
         foreach (['symbol','type','opening_time','closing_time','quantity','entry_price','exit_price','profit','fees','ticket'] as $required) {
             if ($result[$required] === '') throw new RuntimeException(self::FIELDS[$required].' mapping is required.');
         }
         return $result;
     }
 
-    public static function save(PDO $db, int $userId, int $accountId, ?int $id, string $name, string $delimiter, bool $hasHeader, string $timezone, array $mapping, bool $default): int
+    public static function save(PDO $db, int $userId, int $accountId, ?int $id, string $name, string $delimiter, bool $hasHeader, string $timezone, array $mapping, bool $default, string $importMode='standard'): int
     {
         if ($name === '' || strlen($name) > 120) throw new RuntimeException('Template name is required.');
         if (!in_array($delimiter, [',',';','|','\t'], true)) throw new RuntimeException('Invalid CSV delimiter.');
         if (!in_array($timezone, DateTimeZone::listIdentifiers(), true)) throw new RuntimeException('Invalid CSV time zone.');
+        if (!array_key_exists($importMode, self::IMPORT_MODES)) throw new RuntimeException('Invalid CSV import mode.');
         $owned = $db->prepare('SELECT id FROM accounts WHERE id=? AND user_id=?');
         $owned->execute([$accountId,$userId]);
         if (!$owned->fetchColumn()) throw new RuntimeException('Invalid account.');
@@ -54,10 +57,10 @@ final class AccountCsvTemplateService
                 $q=$db->prepare('SELECT id FROM account_csv_templates WHERE id=? AND account_id=? AND user_id=?');
                 $q->execute([$id,$accountId,$userId]);
                 if (!$q->fetchColumn()) throw new RuntimeException('CSV template not found.');
-                $db->prepare('UPDATE account_csv_templates SET name=?,delimiter_char=?,has_header=?,date_timezone=?,mapping_json=?,is_default=? WHERE id=? AND account_id=? AND user_id=?')->execute([$name,$delimiter,$hasHeader?1:0,$timezone,$json,$default?1:0,$id,$accountId,$userId]);
+                $db->prepare('UPDATE account_csv_templates SET name=?,import_mode=?,delimiter_char=?,has_header=?,date_timezone=?,mapping_json=?,is_default=? WHERE id=? AND account_id=? AND user_id=?')->execute([$name,$importMode,$delimiter,$hasHeader?1:0,$timezone,$json,$default?1:0,$id,$accountId,$userId]);
                 $saved=(int)$id;
             } else {
-                $db->prepare('INSERT INTO account_csv_templates(user_id,account_id,name,delimiter_char,has_header,date_timezone,mapping_json,is_default) VALUES(?,?,?,?,?,?,?,?)')->execute([$userId,$accountId,$name,$delimiter,$hasHeader?1:0,$timezone,$json,$default?1:0]);
+                $db->prepare('INSERT INTO account_csv_templates(user_id,account_id,name,import_mode,delimiter_char,has_header,date_timezone,mapping_json,is_default) VALUES(?,?,?,?,?,?,?,?,?)')->execute([$userId,$accountId,$name,$importMode,$delimiter,$hasHeader?1:0,$timezone,$json,$default?1:0]);
                 $saved=(int)$db->lastInsertId();
             }
             $db->commit();

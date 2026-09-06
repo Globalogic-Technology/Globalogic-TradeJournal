@@ -44,7 +44,110 @@ Phase 11.2 Best Trading Times + Strategy Performance + Bulk Trade Filters
 Phase 11.3 Account-Specific Trade CSV Templates
    ↓
 Phase 11.4 Smart CSV Import
+   ↓
+Phase 12 Pre/Post Reviews + Review Goals + Review Enforcement
 ```
+
+## Phase 12 — Pre/Post Reviews, Review Goals and Enforcement
+
+Phase 12 adds a unified review workflow for **Day, Week, Month and Year**, each with a **Pre Review** and **Post Review**.
+
+### Review Center
+
+- `/pre-post-review` provides Day, Week, Month and Year tabs plus Pre/Post tabs.
+- Review schedules are generated for the current period and use a configurable timezone.
+- Review start times are configurable from **Review Schedule**.
+- Weekday, monthly and yearly review dates can be configured.
+- `/review-goals` manages reusable goals.
+- `/review-settings` manages review schedule and timezone.
+
+### Review Goals
+
+Every review can select multiple reusable goals. Predefined goals include:
+
+- Follow my trading plan.
+- Take only planned setups.
+- Avoid revenge trading.
+- Avoid FOMO.
+- Avoid overtrading.
+- Respect my stop loss.
+- Do not move my stop loss.
+- Respect maximum trade/risk limits.
+- Stop when the loss limit is reached.
+- Stay emotionally neutral.
+- Maintain focus.
+- Trade only when mentally prepared.
+- Reach my P&L target.
+- Achieve positive R.
+
+Users can add their own goals and reuse them later, similar to the journal Tags workflow. Goals have types: Process, Risk, Psychology, Performance or Custom.
+
+Pre Review defines the commitment. When a Pre Review is completed, its selected goals are carried into the corresponding Post Review. The Post Review records each goal as **Hit**, **Missed**, **Pending** or **N/A**, with optional evidence/notes and target/unit fields.
+
+### Goal achievement percentage
+
+For every completed Post Review:
+
+`Goal Achievement % = Goals Hit / Goals Selected × 100`
+
+The Dashboard includes a **Review Goal Achievement** line chart with Day/Week/Month/Year selection and a 0–100% scale, showing the historical percentage of goals achieved in completed Post Reviews.
+
+### Review Queue and Notifications
+
+Review Queue now combines:
+
+- Trade
+- Day
+- Week
+- Month
+- Year
+
+The queue has filters for each type and displays both trade reviews and period reviews. Notifications use the same type filters.
+
+An unread notification bell appears beside **Logout**. A pending/actionable review count appears beside **Review Queue**.
+
+### Review popups
+
+The application checks review status every **60 seconds** while the authenticated layout is open. When a scheduled review becomes due, a modal opens with a direct link to the review.
+
+- Day Pre Review popup: required before entering/importing trade data.
+- Day Post Review popup: reminder to complete the day's Post Review.
+- Late login is handled because the server checks whether the scheduled time has already passed.
+- The popup can be temporarily dismissed, but the Day Pre Review server-side restriction remains active until the review is completed.
+
+### Day Pre Review enforcement
+
+Trade creation/editing and trade imports are blocked server-side while a scheduled Day Pre Review is pending. This protects the rule even if JavaScript is disabled or bypassed.
+
+The enforcement is applied to:
+
+- Manual Trade entry.
+- CSV Import, including Interactive Brokers Smart CSV Import.
+
+CSV Preview remains available because preview does not write trade data.
+
+### Suggested review content
+
+Day Pre Reviews include mindset/readiness, energy/focus, market condition, higher-timeframe bias, markets/assets, important levels, primary/secondary setups, risk limits, maximum trades, no-trade conditions and a personal commitment.
+
+Day Post Reviews include plan adherence, risk adherence, outside-plan trades, revenge/FOMO checks, stop discipline, grade, best/worst trades and detailed lessons learned.
+
+Week, Month and Year reviews include period objectives and process/skill reflection in addition to the reusable Goal system.
+
+### Database migration
+
+Phase 12 uses:
+
+`013_phase12_reviews_goals.sql`
+
+The migration adds:
+
+- `review_goals`
+- `period_reviews`
+- `period_review_goals`
+- `review_settings`
+
+Existing users receive predefined goals during the migration, and new users are seeded automatically when they enter the Review workflow.
 
 ## Phase 11.4 — Smart CSV Import
 
@@ -83,50 +186,21 @@ The supported Interactive Brokers order export contains fields such as:
 
 The important distinction is that the broker's **Type** column (`Limit`, `Market`, `Take Profit`, `Stop Loss`, etc.) is used to understand the order, while the broker's **Side** column (`Buy` / `Sell`) is used to determine the trade direction. This prevents an IBKR `Type=Limit` value from being incorrectly treated as a journal Buy/Sell side.
 
-### Import workflow
-
-1. Create an account.
-2. Create its Trade CSV template in **Accounts**.
-3. Select **Standard Trade CSV** or **Smart CSV Import**.
-4. Keep the CSV column mapping fields visible and manually map every field you can match.
-5. For Interactive Brokers, select **Smart CSV Import**.
-6. Open **Import Trades**, select the account and template, and upload the CSV.
-7. Preview first to inspect the generated trades.
-8. Import the generated trades.
-
-The account/template relationship is validated server-side, and manual mappings are passed into the smart parser rather than being discarded.
-
 ### Database migration
 
 Phase 11.4 uses:
 
 `012_phase11_smart_csv_import.sql`
 
-This migration adds the `import_mode` column to `account_csv_templates`. The smart mode is a template capability, while the actual broker-aware detection and order-to-trade processing happen during Import Trades.
-
 ## Phase 11.3 — Account-Specific Trade CSV Templates
 
 The CSV importer supports broker/account-specific CSV formats instead of requiring every account to export the same column layout.
 
-The **Accounts** page contains the **Create/Edit Trade CSV template** form above one consolidated **Trade CSV template list**. The list contains an Account column, template mode, default status, delimiter, header setting, time zone, mapped fields and Edit/Delete actions.
-
-Templates can be stored multiple times per account while one is marked as the default. The account-specific template is automatically selected on the Import Trades page.
+The **Accounts** page contains the **Create/Edit Trade CSV template** form above one consolidated **Trade CSV template list**. Templates can be stored multiple times per account while one is marked as the default. The account-specific template is automatically selected on the Import Trades page.
 
 ## Phase 11.2 — Best Trading Times, Strategy Performance and Bulk Filters
 
 The Dashboard provides deeper time-of-day and strategy analytics. The Bulk Trade Update page also mirrors the Trade History filtering workflow.
-
-### Best Trading Times of the Day
-
-The **Best Trading Times of the Day** ranking appears below **Best Trading Days of the Week** and groups closed trades by opening hour, ranks periods by average P&L, and shows trades, total P&L, average P&L, win rate and Most Strategy Used.
-
-### Strategy Performance
-
-The **Strategy Performance** chart shows net P&L grouped by strategy for the selected Dashboard scope and respects account and trading-system filters.
-
-### Bulk Trade Update filters
-
-Bulk Trade Update supports Symbol, Side, Status, Trading System, Asset, Strategy, Trading Session, Grade, Timeframe, Outcome, From/To dates, Minimum/Maximum P&L and Minimum/Maximum R Multiple. Filters are applied server-side and ownership is enforced when updates are submitted.
 
 ## Phase 11.1 — Goals by Account and Trading System
 
@@ -235,6 +309,7 @@ Run migrations in order:
 010_phase11_goals_by_system.sql
 011_phase11_account_csv_templates.sql
 012_phase11_smart_csv_import.sql
+013_phase12_reviews_goals.sql
 ```
 
 For existing installations, do not skip migrations.
@@ -272,6 +347,7 @@ php -S localhost:8000 -t public
 | 11.2 | Time / Strategy / Bulk Analytics | Best trading times, strategy usage, Strategy Performance and bulk filters |
 | 11.3 | Account CSV Templates | Account-specific broker mappings, multiple templates, default-template selection and canonical CSV import |
 | 11.4 | Smart CSV Import | Manual-first Interactive Brokers mapping, broker-aware fallback, order-to-trade conversion, exit matching, partial exits and smart preview |
+| 12 | Pre/Post Reviews + Review Goals | Period reviews, reusable goals, goal achievement percentage, notifications, popups and Day Pre Review trade-entry enforcement |
 
 ## Reference project
 

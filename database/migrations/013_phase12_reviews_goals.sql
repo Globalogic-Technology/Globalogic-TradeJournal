@@ -77,7 +77,25 @@ CREATE TABLE IF NOT EXISTS review_settings (
     CONSTRAINT fk_review_settings_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Seed reusable goals for every existing user. CROSS JOIN is intentional:
+-- the goal catalog is applied to each user, and the unique key prevents duplicates.
 INSERT INTO review_goals(user_id,name,goal_type)
-SELECT u.id,v.name,v.goal_type FROM users u
-JOIN (SELECT 'Follow my trading plan' name,'process' goal_type UNION ALL SELECT 'Take only planned setups','process' UNION ALL SELECT 'Avoid revenge trading','psychology' UNION ALL SELECT 'Avoid FOMO','psychology' UNION ALL SELECT 'Avoid overtrading','process' UNION ALL SELECT 'Respect my stop loss','risk' UNION ALL SELECT 'Do not move my stop loss','risk' UNION ALL SELECT 'Respect my maximum number of trades','risk' UNION ALL SELECT 'Stop when my loss limit is reached','risk' UNION ALL SELECT 'Stay emotionally neutral','psychology' UNION ALL SELECT 'Maintain focus','psychology' UNION ALL SELECT 'Trade only when mentally prepared','psychology' UNION ALL SELECT 'Reach my P&L target','performance' UNION ALL SELECT 'Achieve positive R','performance') v
-ON DUPLICATE KEY UPDATE name=VALUES(name),goal_type=VALUES(goal_type);
+SELECT u.id,v.name,v.goal_type
+FROM users u
+CROSS JOIN (
+    SELECT 'Follow my trading plan' AS name,'process' AS goal_type
+    UNION ALL SELECT 'Take only planned setups','process'
+    UNION ALL SELECT 'Avoid revenge trading','psychology'
+    UNION ALL SELECT 'Avoid FOMO','psychology'
+    UNION ALL SELECT 'Avoid overtrading','process'
+    UNION ALL SELECT 'Respect my stop loss','risk'
+    UNION ALL SELECT 'Do not move my stop loss','risk'
+    UNION ALL SELECT 'Respect my maximum number of trades','risk'
+    UNION ALL SELECT 'Stop when my loss limit is reached','risk'
+    UNION ALL SELECT 'Stay emotionally neutral','psychology'
+    UNION ALL SELECT 'Maintain focus','psychology'
+    UNION ALL SELECT 'Trade only when mentally prepared','psychology'
+    UNION ALL SELECT 'Reach my P&L target','performance'
+    UNION ALL SELECT 'Achieve positive R','performance'
+) v
+ON DUPLICATE KEY UPDATE goal_type=VALUES(goal_type), is_active=1;

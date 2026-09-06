@@ -40,73 +40,130 @@ Phase 11 Goals + Performance
 Phase 11.1 Account/System Goals + Goal Visualization + Calendar Navigation
    ↓
 Phase 11.2 Best Trading Times + Strategy Performance + Bulk Trade Filters
+   ↓
+Phase 11.3 Account-Specific Trade CSV Templates
 ```
+
+## Phase 11.3 — Account-Specific Trade CSV Templates
+
+The CSV importer supports broker/account-specific CSV formats instead of requiring every account to export the same column layout.
+
+### Account Trade CSV Import section
+
+The **Accounts** page contains a **Trade CSV Import** section where each account can have its own template. A template stores:
+
+- Template name.
+- CSV delimiter: comma, semicolon, pipe or tab.
+- Whether the CSV has a header row.
+- Source date/time zone.
+- Default-template flag.
+- Mapping from broker CSV columns to the journal's standard trade fields.
+
+Supported standard trade fields include Symbol, Type/Side, Opening Time, Closing Time, Quantity/Lots, Entry Price, Stop Loss, Take Profit, Exit Price, Profit, Fees/Commission, Close Reason and Ticket/Trade ID.
+
+A default Exness-style mapping is provided as the starting point, but the CSV column names can be changed to match any broker/export format. Required mappings are validated before saving.
+
+The account template form is handled by the dedicated Accounts route, so saving a CSV template no longer submits the normal account form. This prevents unrelated account validation such as **Initial balance is required** from being triggered.
+
+The Accounts page keeps the **Create/Edit Trade CSV template** form above the consolidated **Trade CSV template list**. The list contains an Account column so all templates can be reviewed together without repeating separate account blocks. Editing a template keeps the editor in the same position above the list, and saving returns to the normal Create Template + List layout.
+
+### Import workflow
+
+The **Import Trades** page works in this order:
+
+1. Select an Account.
+2. The account's default CSV template is selected automatically when available.
+3. Select another template for that account when needed.
+4. Upload the broker CSV.
+5. Preview the CSV using the selected mapping, delimiter, header setting and timezone.
+6. Import the normalized trades into the existing `trades` table.
+
+The selected account/template is validated server-side, so a template belonging to another account cannot be used for an import.
+
+Multiple templates can be stored for the same account, while one can be marked as the default. This makes it possible to keep older broker export formats alongside a current format without changing PHP code.
+
+### Database migration
+
+Phase 11.3 adds:
+
+`011_phase11_account_csv_templates.sql`
+
+The migration creates `account_csv_templates`, including account ownership, template settings, JSON field mappings, default-template state and uniqueness constraints.
 
 ## Phase 11.2 — Best Trading Times, Strategy Performance and Bulk Filters
 
-The Dashboard now provides deeper time-of-day and strategy analytics. The Bulk Trade Update page also mirrors the Trade History filtering workflow.
+The Dashboard provides deeper time-of-day and strategy analytics. The Bulk Trade Update page also mirrors the Trade History filtering workflow.
 
 ### Best Trading Times of the Day
 
-The **Best Trading Times of the Day** ranking appears below **Best Trading Days of the Week** and:
-
-- Groups closed trades by the **opening hour** stored in `trades.opened_at`.
-- Uses one-hour windows such as `09:00–10:00` and `10:00–11:00`.
-- Ranks periods by **average P&L per closed trade**.
-- Shows rank, time window, number of trades, total P&L, average P&L and win rate.
-- Respects the selected Dashboard Account and Trading System filters.
-- Shows **Most Strategy Used**, based on the strategy with the highest number of trades in that time window.
+The **Best Trading Times of the Day** ranking appears below **Best Trading Days of the Week** and groups closed trades by opening hour, ranks periods by average P&L, and shows trades, total P&L, average P&L, win rate and Most Strategy Used.
 
 ### Strategy Performance
 
-A new **Strategy Performance** chart shows net P&L grouped by strategy for the selected Dashboard scope. It uses the same account and trading-system filters as the rest of the Dashboard, making it easier to compare which strategies contribute most to overall performance.
-
-### Strategy information in weekday ranking
-
-The **Best Trading Days of the Week** table now includes **Most Strategy Used**, identifying the strategy with the highest trade count for each weekday.
-
-If a trade has no strategy assigned, it is reported as **Unassigned** rather than being omitted from the analytics.
-
-Times are based on the timezone represented by the stored `opened_at` value/database session; the feature does not silently convert timestamps to another timezone.
+The **Strategy Performance** chart shows net P&L grouped by strategy for the selected Dashboard scope and respects account and trading-system filters.
 
 ### Bulk Trade Update filters
 
-The **Bulk Trade Update** page now provides the same filtering dimensions used by Trade History before selecting trades for a bulk operation:
+Bulk Trade Update supports Symbol, Side, Status, Trading System, Asset, Strategy, Trading Session, Grade, Timeframe, Outcome, From/To dates, Minimum/Maximum P&L and Minimum/Maximum R Multiple. Filters are applied server-side and ownership is enforced when updates are submitted.
 
-- Symbol
-- Side
-- Status
-- Trading System
-- Asset
-- Strategy
-- Trading Session
-- Grade
-- Timeframe
-- Outcome
-- From / To dates
-- Minimum / Maximum P&L
-- Minimum / Maximum R Multiple
+## Phase 11.1 — Goals by Account and Trading System
 
-Filters are applied server-side before the selectable trade list is rendered. Trade ownership remains enforced when the bulk update is submitted, so selected IDs cannot be used to modify another user's trades.
+P&L goals can be configured independently by **Account** and optionally by **Trading System**. Dashboard visualization includes goal reference lines, goal-hit indicators, a color-coded Monthly P&L Calendar, Prev/Today/Next navigation without a full-page refresh, preserved filters and weekday P&L ranking.
 
-## Phase 1 — Working foundation
+## Phase 11 — P&L Goals and Performance
 
-- User registration and authentication.
-- Accounts and account balances.
-- Trade CRUD.
-- Long/Short and Open/Closed status.
-- Duplicate ticket protection.
-- Server-side validation and CSRF protection.
-- Automatic P&L.
-- Dashboard, filtering and pagination.
-- Apache and PHP built-in server routing compatibility.
+The Dashboard provides Daily, Weekly, Monthly and Yearly P&L targets, a Monthly P&L calendar, Year Performance, Monthly Performance with goal reference and goal progress cards.
 
-## Phase 2 — Import, backup and basic analytics
+## Phase 10 — UI redesign
 
-- Exness-style CSV import.
-- JSON backup/export.
-- Closed-trade analytics.
-- Initial performance calculations.
+The application UI was redesigned around a compact trading-journal workflow with a clean white canvas, compact navigation, dense KPI/report panels, responsive trade grids and Dashboard/Analytics/System/Fee reports.
+
+## Phase 9 — Original feature parity
+
+Phase 9 added trade grading, grade-adjusted risk, ideal stop-loss calculation, timeframes, advanced filters, bulk updates, JSON restore with duplicate detection, balance adjustments, broker paste quick entry and secure trade screenshots.
+
+## Phase 8 — Review workflow and notifications
+
+- Review queue and review states.
+- Review due dates and notes.
+- Automatic review creation for closed trades.
+- In-app notifications.
+
+## Phase 7 — Security, reliability and audit trail
+
+- Strict sessions and secure cookie settings.
+- CSRF protection.
+- Content Security Policy with nonces.
+- Security headers and HSTS on HTTPS.
+- User-owned queries.
+- Audit log and auditing for data operations.
+
+## Phase 6 — Import pipeline and data management
+
+- CSV preview and validation.
+- Duplicate detection and import result reporting.
+- Import history and error summaries.
+- Destructive-operation confirmation.
+- PHP 8.4-compatible `fgetcsv()` usage.
+- Account-specific CSV templates and broker-to-canonical trade-field mapping are implemented in Phase 11.3.
+
+## Phase 5 — Performance and risk analytics
+
+- Win rate, net P&L, profit factor and expectancy.
+- Maximum drawdown and trade Sharpe.
+- Total fees and fee impact.
+- Equity curve.
+- Average ideal/actual risk and risk deviation.
+- Over-risk trades and average R Multiple.
+- System, strategy, session and day-of-week breakdowns.
+
+## Phase 4 — Advanced trade journal
+
+- Setup, market context, thesis and entry/exit reasons.
+- Emotions, confidence, execution quality and discipline scores.
+- Mistakes, lessons, what went well and what to change.
+- Review timestamps and journal tags.
+- Multi-select Tags and Mistakes controls.
 
 ## Phase 3 — Trading configuration and risk engine
 
@@ -119,154 +176,24 @@ Filters are applied server-side before the selectable trade list is rendered. Tr
 
 **Expected R** is the normalized realized result: `Net P&L / Ideal Risk`.
 
-## Phase 4 — Advanced trade journal
+## Phase 2 — Import, backup and basic analytics
 
-- Setup and market context.
-- Thesis and entry/exit reasons.
-- Emotions and confidence.
-- Execution quality and discipline scores.
-- Mistakes, lessons, what went well and what to change.
-- Review timestamps.
-- Journal tags.
-- Multi-select Tags and Mistakes controls with visible option lists and custom tag support.
+- Exness-style CSV import.
+- JSON backup/export.
+- Closed-trade analytics.
+- Initial performance calculations.
 
-## Phase 5 — Performance and risk analytics
+## Phase 1 — Working foundation
 
-- Win rate, net P&L, profit factor and expectancy.
-- Maximum drawdown and trade Sharpe.
-- Total fees and fee impact.
-- Equity curve.
-- Average ideal/actual risk and risk deviation.
-- Over-risk trades and average R Multiple.
-- System, strategy, session and day-of-week breakdowns.
-
-## Phase 6 — Import pipeline and data management
-
-- CSV preview and validation.
-- Duplicate detection and import result reporting.
-- Import history and error summaries.
-- Destructive-operation confirmation.
-- Delete all trades and import history.
-- PHP 8.4-compatible `fgetcsv()` usage.
-
-## Phase 7 — Security, reliability and audit trail
-
-- Strict sessions and secure cookie settings.
-- CSRF protection.
-- Content Security Policy with nonces.
-- Security headers and HSTS on HTTPS.
-- User-owned queries.
-- Audit log and auditing for data operations.
-
-## Phase 8 — Review workflow and notifications
-
-- Review queue.
-- Pending/reviewed/needs-follow-up states.
-- Review due dates and notes.
-- Automatic review creation for closed trades.
-- In-app notifications.
-
-## Phase 9 — Original feature parity
-
-Phase 9 closes the major functionality gaps identified by comparing the PHP application with the original Trading Journal project.
-
-### Trade grading
-
-The trade model supports:
-
-`A++++`, `A+++`, `A++`, `A+`, `A`, `B`, `C`, `D`, `E`, `F`
-
-with grade-based risk multipliers, including 2.50x for A++++, 2.00x for A+++, 1.25x for A++, 1.00x for A+, and progressively smaller multipliers through F.
-
-### Other parity features
-
-- Grade-adjusted risk.
-- Ideal stop-loss calculator.
-- Timeframes: `1m`, `5m`, `15m`, `30m`, `1h`, `4h`, `1d`, `1w`.
-- Advanced trade filters.
-- Bulk trade updates.
-- JSON restore with duplicate detection.
-- Balance adjustments.
-- Broker paste quick entry.
-- Secure trade screenshots.
-
-## Phase 10 — UI redesign
-
-The application UI was redesigned around the original project's compact trading-journal workflow:
-
-- Clean white canvas.
-- Compact horizontal primary navigation.
-- Dense KPI cards and report panels.
-- Responsive trade grids and tables.
-- Dashboard, Advanced Analytics, System Report and Fee Report.
-- Trade screenshots integrated with the trade workflow.
-
-## Phase 11 — P&L Goals and Performance
-
-The Dashboard now provides goal-oriented performance tracking for:
-
-- Daily P&L.
-- Weekly P&L.
-- Monthly P&L.
-- Yearly P&L.
-- Monthly P&L calendar.
-- Year Performance chart.
-- Monthly Performance chart with goal reference.
-- Goal progress cards with goal-hit indicators.
-
-The monthly calendar makes the daily target visible directly on each day.
-
-## Phase 11.1 — Goals by Account and Trading System
-
-P&L goals can now be configured independently by **Account** and optionally by **Trading System**.
-
-Examples of trading systems include:
-
-- Day Trade
-- Swing Trade
-- Position Trade
-- Buy & Hold
-
-The application uses the systems configured in the `trading_systems` table, so these names can be created or renamed to match the user's trading methodology.
-
-### Goal scopes
-
-- **Account total:** applies to all systems for an account.
-- **Account + System:** applies only to trades assigned to that trading system for that account.
-- Multiple account/system combinations can have independent daily, weekly, monthly and yearly targets.
-
-### Goal editing and deletion
-
-The **Current Goals** table supports:
-
-- **Edit:** loads the existing goal into the form and updates the same database record instead of creating a duplicate.
-- **Delete:** removes the selected goal after confirmation.
-
-The server validates ownership for accounts, trading systems and goals before modifying data.
-
-### Goal visualization
-
-Dashboard goal references make progress easier to read:
-
-- Goal reference lines are shown on performance charts.
-- A green check mark indicates that the target has been reached.
-- Calendar days that reach the daily target receive a visual goal-hit treatment and check mark.
-- Goal cards show actual performance alongside the configured target.
-- The Monthly P&L Calendar legend uses larger, color-coded status symbols: green **✓** for goal hit, blue **↑** for positive below goal, red **✕** for loss, and gray **•** for no P&L.
-- The calendar has **Prev**, **Today** and **Next** controls so historical and future months can be reviewed without leaving the Dashboard.
-- Calendar navigation preserves the selected Account and Trading System filters.
-- Calendar navigation loads only the calendar section through an asynchronous request and preserves the user's current page scroll position.
-
-### Weekday P&L ranking
-
-A **Best Trading Days of the Week** summary appears below the calendar. It ranks weekdays by **average P&L per closed trade** for the selected dashboard scope and displays:
-
-- Rank (`1º`, `2º`, `3º`, etc.).
-- Weekday.
-- Number of closed trades.
-- Total P&L.
-- Average P&L per trade.
-- Most Strategy Used for that weekday.
+- User registration and authentication.
+- Accounts and account balances.
+- Trade CRUD.
+- Long/Short and Open/Closed status.
+- Duplicate ticket protection.
+- Server-side validation and CSRF protection.
+- Automatic P&L.
+- Dashboard, filtering and pagination.
+- Apache and PHP built-in server routing compatibility.
 
 ## Database migrations
 
@@ -283,9 +210,8 @@ Run migrations in order:
 008_phase9_original_feature_parity.sql
 009_phase11_goals.sql
 010_phase11_goals_by_system.sql
+011_phase11_account_csv_templates.sql
 ```
-
-Phase 11.2 does not require a database migration because its time and strategy analytics and bulk filtering are derived from existing trade, strategy, asset, session and trading-system data.
 
 For existing installations, do not skip migrations.
 
@@ -310,16 +236,17 @@ php -S localhost:8000 -t public
 | 1 | Foundation | Users, accounts, trades, authentication |
 | 2 | Import / Backup | CSV import, JSON backup, basic analytics |
 | 3 | Configuration / Risk | Systems, strategies, assets, sessions, risk engine |
-| 4 | Journal | Qualitative journal, tags and multi-select review fields |
+| 4 | Journal | Qualitative journal, tags and review fields |
 | 5 | Analytics | Performance, risk and breakdown analytics |
 | 6 | Data Management | Validated imports and import history |
 | 7 | Security / Audit | Hardening and audit trail |
 | 8 | Review / Notifications | Review queue and notifications |
-| 9 | Feature Parity | Grading, adjusted risk, filters, bulk operations, JSON restore, balance adjustments, broker paste and screenshots |
+| 9 | Feature Parity | Grading, filters, bulk operations, restore, balance adjustments, broker paste and screenshots |
 | 10 | UI | Compact trading-journal dashboard and responsive workflow |
 | 11 | Goals / Performance | Daily/weekly/monthly/yearly targets, calendar P&L and yearly performance |
-| 11.1 | Account/System Goals | Independent goals, editing/deletion, goal-hit visualization, calendar navigation and weekday ranking |
-| 11.2 | Time / Strategy / Bulk Analytics | Best trading times, most-used strategy by weekday/time, Strategy Performance chart and Trade History filters for bulk updates |
+| 11.1 | Account/System Goals | Independent goals, goal visualization, calendar navigation and weekday ranking |
+| 11.2 | Time / Strategy / Bulk Analytics | Best trading times, strategy usage, Strategy Performance and bulk filters |
+| 11.3 | Account CSV Templates | Account-specific broker mappings, multiple templates, default-template selection and canonical CSV import |
 
 ## Reference project
 

@@ -1,7 +1,7 @@
 RewriteEngine On
 
 # Phase 3 through Phase 11 application routes
-RewriteRule ^(trades|systems|strategies|assets|asset-fees|sessions|risk-settings|account-settings|audit-log|goals)(/.*)?$ phase3.php [QSA,L]
+RewriteRule ^(trades|systems|strategies|assets|asset-fees|sessions|risk-settings|account-settings|audit-log|goals|account-csv-templates)(/.*)?$ phase3.php [QSA,L]
 
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

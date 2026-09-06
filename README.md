@@ -48,67 +48,61 @@ Phase 11.4 Smart CSV Import
 
 ## Phase 11.4 — Smart CSV Import
 
-Phase 11.4 adds broker-aware CSV parsing on top of the account-specific templates from Phase 11.3.
+Phase 11.4 adds broker-aware import behavior without removing the account-specific manual CSV mapping system from Phase 11.3.
 
-### Account configuration
+### Account CSV template modes
 
-The Accounts page now has two template choices:
+The Accounts page provides two template modes:
 
-- **Standard Trade CSV** — normal manual broker-to-journal field mapping.
-- **Smart CSV Import** — keeps the same manual mapping fields visible and editable, while enabling Smart Import for supported Interactive Brokers accounts.
+- **Standard Trade CSV** — normal manual mapping. Every required canonical trade field must be mapped to a CSV column.
+- **Smart CSV Import** — manual mappings remain visible and are stored exactly like the standard mappings. Smart behavior is activated on the Import Trades page for supported broker accounts.
 
-Selecting Smart CSV Import **does not hide the manual mapping fields**. Users can manually map every column that is available in their CSV. During import, those manual mappings take priority and Smart Import is only used for fields that were not manually mapped or do not contain a value.
+Selecting Smart CSV Import never hides the CSV column mapping fields. Users can manually map every field that exists in their broker export.
 
-### Interactive Brokers Orders CSV
+### Interactive Brokers Smart Import
 
-When the selected account is configured for Smart CSV Import and is an Interactive Brokers account, the Import Trades page recognizes order exports containing fields such as:
+When the selected account is an **Interactive Brokers** account and its selected template uses **Smart CSV Import**, the Import Trades page:
+
+1. Uses the account template's manual mappings first.
+2. Automatically falls back to supported Interactive Brokers order columns only for fields that were not manually mapped (or have an empty mapped value).
+3. Reconstructs broker order rows into the journal's canonical trade records.
+4. Matches filled entries with Take Profit and Stop Loss exits.
+5. Correctly accounts for the fact that IBKR exit orders normally have the opposite Side from the position they close (Sell closes Long; Buy closes Short).
+6. Supports partial exits by reducing the remaining position quantity.
+7. Uses Avg fill price for entry/exit prices when no manual value is available.
+8. Uses Stop price / Stop loss and Limit price / Take profit for protective levels when available.
+9. Uses Last update time when opening/closing timestamps are not manually mapped.
+10. Uses Order ID when Ticket / Trade ID is not manually mapped.
+11. Uses manually mapped Profit and Fees when populated; otherwise calculates realized P&L from entry/exit fills and defaults fees to zero when unavailable.
+12. Creates Open trades for filled entries that remain unmatched.
+13. Shows generated trades during Preview before writing them to the database.
+
+The supported Interactive Brokers order export contains fields such as:
 
 `Symbol, Side, Type, Quantity, Avg fill price, Limit price, Stop price, Take profit, Stop loss, Status, Last update time, Instruction, Duration, Order ID`
 
-The importer combines the manual template mapping with broker-aware fallback detection. It automatically:
-
-- Uses manually mapped fields first.
-- Falls back to the Interactive Brokers column names for unmapped fields.
-- Sorts orders chronologically before matching them.
-- Identifies filled entry orders such as Buy/Sell Limit, Stop Limit or Market-style orders.
-- Identifies Take Profit and Stop Loss orders as exits/protective orders.
-- Matches exits to the corresponding open position by symbol and side.
-- Supports partial exits by reducing the remaining position quantity.
-- Derives Long/Short from the order side when not manually mapped.
-- Uses Avg fill price for actual entry/exit fills when not manually mapped.
-- Uses Stop price / Stop loss and Limit price / Take profit for protective levels when available.
-- Derives timestamps from Last update time when the journal date fields are not manually mapped.
-- Uses Order ID as the ticket when no manual ticket mapping is available.
-- Creates Open trades when a filled entry has not yet been matched with an exit.
-- Calculates realized P&L from entry and exit fill prices when no usable profit field is manually mapped.
-- Shows generated trades during CSV Preview before writing anything to the database.
-
-The supplied Interactive Brokers format is therefore converted from an **order report** into the application's canonical **trade records**, rather than treating every CSV row as an independent trade.
-
-Fees are currently zero when the order export does not provide a usable commission/fee value. If a manual fees mapping is configured and contains a value, that value is used instead.
+The important distinction is that the broker's **Type** column (`Limit`, `Market`, `Take Profit`, `Stop Loss`, etc.) is used to understand the order, while the broker's **Side** column (`Buy` / `Sell`) is used to determine the trade direction. This prevents an IBKR `Type=Limit` value from being incorrectly treated as a journal Buy/Sell side.
 
 ### Import workflow
 
-The **Import Trades** page works in this order:
+1. Create an account.
+2. Create its Trade CSV template in **Accounts**.
+3. Select **Standard Trade CSV** or **Smart CSV Import**.
+4. Keep the CSV column mapping fields visible and manually map every field you can match.
+5. For Interactive Brokers, select **Smart CSV Import**.
+6. Open **Import Trades**, select the account and template, and upload the CSV.
+7. Preview first to inspect the generated trades.
+8. Import the generated trades.
 
-1. Select an Account.
-2. Select the account's CSV template. The default template is selected automatically when available.
-3. Upload the broker CSV.
-4. If the account is configured for **Smart CSV Import** and is identified as Interactive Brokers, Smart Import is activated on the Import page.
-5. Manual template mappings are applied first.
-6. Smart Interactive Brokers detection fills only the remaining fields and performs order-to-trade matching.
-7. Preview the generated trades.
-8. Import the normalized trades into the existing `trades` table.
-
-The selected account/template is validated server-side, so a template belonging to another account cannot be used for an import.
+The account/template relationship is validated server-side, and manual mappings are passed into the smart parser rather than being discarded.
 
 ### Database migration
 
-Phase 11.4 adds:
+Phase 11.4 uses:
 
 `012_phase11_smart_csv_import.sql`
 
-The migration adds the `import_mode` storage column to `account_csv_templates`. The supported UI values are now **Standard Trade CSV** and **Smart CSV Import**. Smart processing itself is performed by the Import Trades workflow rather than by hiding or replacing the manual mapping editor.
+This migration adds the `import_mode` column to `account_csv_templates`. The smart mode is a template capability, while the actual broker-aware detection and order-to-trade processing happen during Import Trades.
 
 ## Phase 11.3 — Account-Specific Trade CSV Templates
 
@@ -277,7 +271,7 @@ php -S localhost:8000 -t public
 | 11.1 | Account/System Goals | Independent goals, goal visualization, calendar navigation and weekday ranking |
 | 11.2 | Time / Strategy / Bulk Analytics | Best trading times, strategy usage, Strategy Performance and bulk filters |
 | 11.3 | Account CSV Templates | Account-specific broker mappings, multiple templates, default-template selection and canonical CSV import |
-| 11.4 | Smart CSV Import | Manual mappings first, Interactive Brokers smart fallback, order-to-trade conversion and smart preview |
+| 11.4 | Smart CSV Import | Manual-first Interactive Brokers mapping, broker-aware fallback, order-to-trade conversion, exit matching, partial exits and smart preview |
 
 ## Reference project
 

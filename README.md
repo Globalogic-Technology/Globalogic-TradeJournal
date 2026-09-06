@@ -45,7 +45,7 @@ Phase 11.3 Account-Specific Trade CSV Templates
    ↓
 Phase 11.4 Smart CSV Import
    ↓
-Phase 12 Pre/Post Reviews + Review Goals + Review Enforcement
+Phase 12 Pre/Post Reviews + Review Goals + Review Enforcement + Schedule Exceptions
 ```
 
 ## Phase 12 — Pre/Post Reviews, Review Goals and Enforcement
@@ -60,6 +60,7 @@ Phase 12 adds a unified review workflow for **Day, Week, Month and Year**, each 
 - Weekday, monthly and yearly review dates can be configured.
 - `/review-goals` manages reusable goals.
 - `/review-settings` manages review schedule and timezone.
+- `/review-exceptions` skips review creation for Day Off, PTO, personal problems, holidays, or other no-trading periods.
 
 ### Review Goals
 
@@ -83,6 +84,8 @@ Every review can select multiple reusable goals. Predefined goals include:
 Users can add their own goals and reuse them later, similar to the journal Tags workflow. Goals have types: Process, Risk, Psychology, Performance or Custom.
 
 Pre Review defines the commitment. When a Pre Review is completed, its selected goals are carried into the corresponding Post Review. The Post Review records each goal as **Hit**, **Missed**, **Pending** or **N/A**, with optional evidence/notes and target/unit fields.
+
+Day Pre Review setup fields now use controlled inputs where useful: market condition and higher-timeframe bias are comboboxes, while Primary Setup and Secondary Setup use a type-or-select combobox with common trading setups such as Breakout, Pullback, Trend Continuation, Liquidity Sweep, VWAP Reversion and Opening Range Breakout.
 
 ### Goal achievement percentage
 
@@ -113,6 +116,7 @@ The application checks review status every **60 seconds** while the authenticate
 - Day Pre Review popup: required before entering/importing trade data.
 - Day Post Review popup: reminder to complete the day's Post Review.
 - Late login is handled because the server checks whether the scheduled time has already passed.
+- The review status endpoint explicitly loads the notification service so the popup check returns valid JSON instead of failing silently.
 - The popup can be temporarily dismissed, but the Day Pre Review server-side restriction remains active until the review is completed.
 
 ### Day Pre Review enforcement
@@ -125,6 +129,21 @@ The enforcement is applied to:
 - CSV Import, including Interactive Brokers Smart CSV Import.
 
 CSV Preview remains available because preview does not write trade data.
+
+### Schedule exceptions / missed reviews
+
+A trader should not be forced to create meaningless reviews for a non-trading day. `/review-exceptions` allows a date or date range to be marked as an exception with a reason such as **Day Off**, **PTO**, **Personal Issue**, **Holiday** or another custom reason.
+
+When an exception is created:
+
+- Matching period review records are removed.
+- The scheduler will not recreate those reviews.
+- The exception is retained as the source of truth for that period.
+- A review can also be deleted directly from the Pre/Post Review page; deleting it creates an exception so it is not immediately recreated.
+
+Migration:
+
+`014_phase12_review_exceptions.sql`
 
 ### Suggested review content
 
@@ -139,6 +158,7 @@ Week, Month and Year reviews include period objectives and process/skill reflect
 Phase 12 uses:
 
 `013_phase12_reviews_goals.sql`
+`014_phase12_review_exceptions.sql`
 
 The migration adds:
 
@@ -146,8 +166,9 @@ The migration adds:
 - `period_reviews`
 - `period_review_goals`
 - `review_settings`
+- `review_exceptions`
 
-Existing users receive predefined goals during the migration, and new users are seeded automatically when they enter the Review workflow.
+The Phase 12 migration intentionally keeps default goal seeding in the application layer using `INSERT IGNORE`, avoiding MariaDB/phpMyAdmin parser differences around `INSERT ... SELECT ... ON DUPLICATE KEY UPDATE`.
 
 ## Phase 11.4 — Smart CSV Import
 
@@ -310,6 +331,7 @@ Run migrations in order:
 011_phase11_account_csv_templates.sql
 012_phase11_smart_csv_import.sql
 013_phase12_reviews_goals.sql
+014_phase12_review_exceptions.sql
 ```
 
 For existing installations, do not skip migrations.
@@ -347,7 +369,7 @@ php -S localhost:8000 -t public
 | 11.2 | Time / Strategy / Bulk Analytics | Best trading times, strategy usage, Strategy Performance and bulk filters |
 | 11.3 | Account CSV Templates | Account-specific broker mappings, multiple templates, default-template selection and canonical CSV import |
 | 11.4 | Smart CSV Import | Manual-first Interactive Brokers mapping, broker-aware fallback, order-to-trade conversion, exit matching, partial exits and smart preview |
-| 12 | Pre/Post Reviews + Review Goals | Period reviews, reusable goals, goal achievement percentage, notifications, popups and Day Pre Review trade-entry enforcement |
+| 12 | Pre/Post Reviews + Review Goals | Period reviews, reusable goals, goal achievement percentage, notifications, popups, setup comboboxes, trade-entry enforcement and schedule exceptions |
 
 ## Reference project
 
